@@ -13,7 +13,7 @@ def get_aws_client(resource_type: str):
             region_name=REGION,
             endpoint_url=LOCALSTACK_ADDRESS,
             aws_access_key_id="foo",
-            aws_secret_access_key="bar",
+            aws_secret_access_key="bar",  # pragma: allowlist secret
         )
     else:
         return boto3.client(resource_type, REGION)

@@ -6,7 +6,7 @@ database that have gone out of sync.  These are as follows:
 ## Entity Counter Recalculator
 
 This resets `customer-images` and `space-images` within the `EntityCounter` table to match details from the `Images`
-table. This is completed by performing an `UPSERT` on the database. 
+table. This is completed by performing an `UPSERT` on the database.
 It passes details from these changes into cloudwatch metrics for the following details:
 
 - difference between `EntityCounter` and `Images` for customer images and space images

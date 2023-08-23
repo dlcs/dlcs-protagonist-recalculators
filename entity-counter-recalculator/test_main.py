@@ -37,7 +37,7 @@ class TestLambdaFunction(unittest.TestCase):
     @mock.patch("main.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("main.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
-    @mock.patch("main.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")
+    @mock.patch("main.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")     # pragma: allowlist secret
     def test_lambda_handler_updates_mocked_cloudfront_metrics(self, mock_connect, factory):
         expected = [['fake', 'row', 1], ['fake', 'row', 2]]
 

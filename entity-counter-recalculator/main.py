@@ -112,7 +112,7 @@ def __run_sql(conn):
         ON CONFLICT ("Type", "Scope", "Customer")
         DO UPDATE SET ("Type", "Scope", "Next", "Customer") = ROW (excluded.*)
         RETURNING *)
-        -- selects with `with` execute on snapshots, so changes from the upsert aren't seen here. 
+        -- selects with `with` execute on snapshots, so changes from the upsert aren't seen here.
         -- See https://www.postgresql.org/docs/11/queries-with.html
         SELECT "Scope" as customer, count, "Next", count - "Next" as delta
         FROM "EntityCounters" as y
