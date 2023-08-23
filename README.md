@@ -36,7 +36,7 @@ In order to avoid encoding issues in `requirements.txt` when running a `pip free
 that the file format be set to `UTF-8`. This can be done with the following command:
 
 ```powershell
-pip freeze | Out-File -Encoding UTF8 requirements.txt
+pip freeze -l | Out-File -Encoding UTF8 requirements.txt
 ```
 
 ### running
