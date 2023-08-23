@@ -30,6 +30,15 @@ prerequisites for the project can be installed from `pip` using the following co
 pip install -r requirements.txt
 ```
 
+### updating requirements
+
+In order to avoid encoding issues in `requirements.txt` when running a `pip freeze` in powershell requires
+that the file format be set to `UTF-8`. This can be done with the following command:
+
+```powershell
+pip freeze | Out-File -Encoding UTF8 requirements.txt
+```
+
 ### running
 
 The lambda functions can be run using `python-lambda-local`, which should have been installed from `requirements.txt`
