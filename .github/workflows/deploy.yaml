@@ -38,7 +38,11 @@ jobs:
       - name: Zip output
         working-directory: ./entity-counter-recalculator
         run: zip -qq -r entity-counter-recalculator_${{ env.NOW }}.zip main.py app/ ../my-dependencies.zip
-      - uses: actions/upload-artifact@v2
+      - uses: actions/upload-artifact@v3
         with:
           name: entity-counter-recalculator
           path: ./entity-counter-recalculator/entity-counter-recalculator_${{ env.NOW }}.zip
+      - uses: actions/upload-artifact@v3
+        with:
+          name: dependencies
+          path: ./my-dependencies.zip
