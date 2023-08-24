@@ -25,11 +25,19 @@ jobs:
       - name: Run python tests
         working-directory: ./entity-counter-recalculator
         run: python -m unittest test_main.py
+      - name: Set current date as env variable
+        run: echo "NOW=$(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_ENV
+         - name: Echo current date
+           run: echo $NOW
       - name: Install zip
         uses: montudor/action-zip@v1
+      - name: Install minimal dependencies for package
+        run: python -m pip --target ./package install -r minimalRequirements.txt
+      - name: Zip packages
+        run: zip -qq -r my-dependencies.zip packages/
       - name: Zip output
         working-directory: ./entity-counter-recalculator
-        run: zip -qq -r entity-counter-recalculator_${{ github.run_id }}.zip main.py app/
+        run: zip -qq -r entity-counter-recalculator_${{ github.run_id }}.zip main.py app/ ../packages/my-dependencies.zip
       - uses: actions/upload-artifact@v2
         with:
           name: entity-counter-recalculator

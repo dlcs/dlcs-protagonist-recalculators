@@ -6,8 +6,8 @@ from urllib.parse import urlparse
 from app.settings import (CONNECTION_STRING, DRY_RUN, ENABLE_CLOUDWATCH_INTEGRATION,
                           CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME, CLOUDWATCH_SPACE_DELETE_METRIC_NAME,
                           CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME, CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME,
-                          CONNECTION_TIMEOUT, APP_VERSION)
-from app.aws_factory import get_aws_client
+                          CONNECTION_TIMEOUT, APP_VERSION, AWS_CONNECTION_STRING_LOCATION)
+import app.aws_factory
 
 
 def lambda_handler(event, context):
@@ -17,7 +17,7 @@ def lambda_handler(event, context):
 
     if ENABLE_CLOUDWATCH_INTEGRATION:
         logger.info("setting cloudwatch metrics")
-        cloudwatch = get_aws_client("cloudwatch")
+        cloudwatch = app.aws_factory.get_aws_client("cloudwatch")
         __set_cloudwatch_metrics(records, cloudwatch, connection_info)
 
     conn.close()
@@ -175,7 +175,9 @@ def __connect_to_postgres(connection_info):
 
 
 def __get_connection_config():
-    result = urlparse(CONNECTION_STRING)
+    connection_string = __get_connection_string()
+
+    result = urlparse(connection_string)
     username = result.username
     password = result.password
     database = result.path[1:]
@@ -189,3 +191,18 @@ def __get_connection_config():
         "host": hostname,
         "port": port
     }
+
+
+def __get_connection_string():
+
+    if CONNECTION_STRING is not None:
+        return CONNECTION_STRING
+    else:
+        logger.debug("retrieving connection string from AWS")
+        try:
+            ssm = app.aws_factory.get_aws_client("ssm")
+            parameter = ssm.get_parameter(Name=AWS_CONNECTION_STRING_LOCATION, WithDecryption=True)
+            return parameter
+        except Exception as e:
+            logger.error(f"Error retrieving ssm parameter: {e}")
+            raise e
