@@ -16,7 +16,7 @@ jobs:
     env:
       NOW:
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup python
         uses: actions/setup-python@v4.5.0
         with:
@@ -32,7 +32,7 @@ jobs:
       - name: Install minimal dependencies for package
         run: python -m pip install --target ./package -r minimalRequirements.txt
       - name: Zip packages
-        run: zip -qq -r my-dependencies.zip packages/ . -i packages/
+        run: zip -qq -r my-dependencies.zip . -i packages/
       - name: Set current date as env variable
         run: echo "NOW=$(date +'%Y-%m-%dT%H_%M_%S')" >> $GITHUB_ENV
       - name: Zip output
