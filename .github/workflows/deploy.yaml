@@ -13,8 +13,10 @@ on:
 jobs:
   build-deploy:
     runs-on: ubuntu-latest
+    env:
+      NOW:
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Setup python
         uses: actions/setup-python@v4.5.0
         with:
@@ -25,20 +27,11 @@ jobs:
       - name: Run python tests
         working-directory: ./entity-counter-recalculator
         run: python -m unittest test_main.py
-      - name: Set current date as env variable
-        run: echo "NOW=$(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_ENV
-      - name: Echo current date
-        run: echo $NOW
       - name: Install zip
         uses: montudor/action-zip@v1
-      - name: Install minimal dependencies for package
-        run: python -m pip install --target ./package -r minimalRequirements.txt
-      - name: Zip packages
-        run: zip -qq -r my-dependencies.zip packages/
-      - name: Zip output
-        working-directory: ./entity-counter-recalculator
-        run: zip -qq -r entity-counter-recalculator_${{ github.run_id }}.zip main.py app/ ../packages/my-dependencies.zip
-      - uses: actions/upload-artifact@v2
+      - name: run zip action
+        run: .github/helpers/zip-files.sh
+      - uses: actions/upload-artifact@v3
         with:
           name: entity-counter-recalculator
-          path: ./entity-counter-recalculator/entity-counter-recalculator_${{ github.run_id }}.zip
+          path: ./entity-counter-recalculator**
