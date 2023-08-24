@@ -34,7 +34,7 @@ jobs:
       - name: Zip packages
         run: zip -qq -r my-dependencies.zip packages/ . -i packages/
       - name: Set current date as env variable
-        run: echo "NOW=$(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_ENV
+        run: echo "NOW=$(date +'%Y-%m-%dT%H_%M_%S')" >> $GITHUB_ENV
       - name: Zip output
         working-directory: ./entity-counter-recalculator
         run: zip -qq -r entity-counter-recalculator_${{ env.NOW }}.zip main.py app/ ../packages/my-dependencies.zip
