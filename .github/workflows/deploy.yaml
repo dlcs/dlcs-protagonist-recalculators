@@ -37,7 +37,7 @@ jobs:
         run: echo "NOW=$(date +'%Y-%m-%dT%H_%M_%S')" >> $GITHUB_ENV
       - name: Zip output
         working-directory: ./entity-counter-recalculator
-        run: zip -qq -r entity-counter-recalculator_${{ env.NOW }}.zip main.py app/ ../packages/my-dependencies.zip
+        run: zip -qq -r entity-counter-recalculator_${{ env.NOW }}.zip main.py app/ ../my-dependencies.zip
       - uses: actions/upload-artifact@v2
         with:
           name: entity-counter-recalculator
