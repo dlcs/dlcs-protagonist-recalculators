@@ -167,7 +167,6 @@ def __run_sql(conn):
 def __connect_to_postgres(connection_info):
     try:
         conn = psycopg2.connect(**connection_info, connect_timeout=CONNECTION_TIMEOUT)
-
         return conn
     except Exception as e:
         logger.error(f"Error connecting to database: {e}")
@@ -202,7 +201,7 @@ def __get_connection_string():
         try:
             ssm = app.aws_factory.get_aws_client("ssm")
             parameter = ssm.get_parameter(Name=AWS_CONNECTION_STRING_LOCATION, WithDecryption=True)
-            return parameter
+            return parameter["Parameter"]["Value"]
         except Exception as e:
             logger.error(f"Error retrieving ssm parameter: {e}")
             raise e
