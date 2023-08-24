@@ -27,8 +27,8 @@ jobs:
         run: python -m unittest test_main.py
       - name: Set current date as env variable
         run: echo "NOW=$(date +'%Y-%m-%dT%H:%M:%S')" >> $GITHUB_ENV
-         - name: Echo current date
-           run: echo $NOW
+      - name: Echo current date
+        run: echo $NOW
       - name: Install zip
         uses: montudor/action-zip@v1
       - name: Install minimal dependencies for package
