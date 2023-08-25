@@ -23,11 +23,11 @@ class TestLambdaFunction(unittest.TestCase):
         mock_cur = mock_con.cursor.return_value
         mock_cur.fetchall.return_value = expected
 
-        result = main.lambda_handler(event="{}", context=None)
+        result = main.begin_cleanup()
 
-        self.assertEqual(result, {'message': {'customerImages': [['fake', 'row', 1],
+        self.assertEqual(result, {'customerImages': [['fake', 'row', 1],
                                                                   ['fake', 'row', 2]],
-                                               'spaceImages': [['fake', 'row', 1], ['fake', 'row', 2]]}})
+                                               'spaceImages': [['fake', 'row', 1], ['fake', 'row', 2]]})
 
         mock_con.cursor.asset_called_with(cursor_factory=RealDictCursor)
 
@@ -49,7 +49,7 @@ class TestLambdaFunction(unittest.TestCase):
         factory.get_aws_client = boto3.client("cloudwatch", region_name='eu-west-2')
 
         try:
-            main.lambda_handler(event="{}", context=None)
+            main.begin_cleanup()
         except Exception:
             self.fail("myFunc() raised ExceptionType unexpectedly!")
 
@@ -70,7 +70,7 @@ class TestLambdaFunction(unittest.TestCase):
         mock_cur.fetchall.return_value = expected
 
         with self.assertRaises(ParamValidationError):
-            main.lambda_handler(event="{}", context=None)
+            main.begin_cleanup()
 
     # @mock_cloudwatch
     # @mock_ssm

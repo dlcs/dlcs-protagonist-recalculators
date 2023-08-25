@@ -10,14 +10,6 @@ from app.settings import (CONNECTION_STRING, DRY_RUN, ENABLE_CLOUDWATCH_INTEGRAT
 import app.aws_factory
 
 
-def lambda_handler(event, context):
-    records = begin_cleanup()
-
-    return {
-        'message': records
-    }
-
-
 def begin_cleanup():
     connection_info = __get_connection_config()
     conn = __connect_to_postgres(connection_info)
