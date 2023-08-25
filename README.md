@@ -53,3 +53,17 @@ An example of this is below, if running from the root of this project:
 ```powershell
 python-lambda-local -f lambda_handler .\entity-counter-recalculator\main.py .\entity-counter-recalculator\event.json
 ```
+
+### running via docker
+
+the docker container can be built with the following command:
+
+```powershell
+ docker build . -t dlcs-entity-counter-recalculator:local
+```
+
+then run with this command:
+
+```powershell
+docker run rm -it --env-file { env file location } dlcs-entity-counter-recalculator:local
+```

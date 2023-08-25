@@ -1,5 +1,5 @@
 import psycopg2
-import psycopg2.extras
+from psycopg2 import extras
 
 from logzero import logger
 from urllib.parse import urlparse
@@ -11,6 +11,14 @@ import app.aws_factory
 
 
 def lambda_handler(event, context):
+    records = begin_cleanup()
+
+    return {
+        'message': records
+    }
+
+
+def begin_cleanup():
     connection_info = __get_connection_config()
     conn = __connect_to_postgres(connection_info)
     records = __run_sql(conn)
@@ -22,9 +30,7 @@ def lambda_handler(event, context):
 
     conn.close()
 
-    return {
-        'message': records
-    }
+    return records
 
 
 def __set_cloudwatch_metrics(records, cloudwatch, connection_info):
@@ -166,6 +172,7 @@ def __run_sql(conn):
 
 def __connect_to_postgres(connection_info):
     try:
+        logger.debug("connecting to postgres")
         conn = psycopg2.connect(**connection_info, connect_timeout=CONNECTION_TIMEOUT)
         return conn
     except Exception as e:
@@ -205,3 +212,6 @@ def __get_connection_string():
         except Exception as e:
             logger.error(f"Error retrieving ssm parameter: {e}")
             raise e
+
+if __name__ == "__main__":
+    begin_cleanup()
