@@ -41,20 +41,25 @@ pip freeze -l | Out-File -Encoding UTF8 requirements.txt
 
 ### running
 
-The lambda functions can be run using `python-lambda-local`, which should have been installed from `requirements.txt`
-and can run the lambda function using the below command:
+The lambda functions can be run directly with python or via the built docker container
+
+#### running directly
+
+First, the environment variables need to be added to the terminal using the `.\setEnvFile.ps1` file
+
+You can run directly using the below commands
 
 ```powershell
-python-lambda-local -f <function name> <lambda location> <event json location>
+python <file location>
 ```
 
 An example of this is below, if running from the root of this project:
 
 ```powershell
-python-lambda-local -f lambda_handler .\entity-counter-recalculator\main.py .\entity-counter-recalculator\event.json
+python .\entity-counter-recalculator\main.py
 ```
 
-### running via docker
+#### running via docker
 
 the docker container can be built with the following command:
 
