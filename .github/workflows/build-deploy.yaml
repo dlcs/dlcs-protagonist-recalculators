@@ -11,10 +11,8 @@ on:
       - main
 
 jobs:
-  build-deploy:
+  test-entity-counter-recalculator:
     runs-on: ubuntu-latest
-    env:
-      NOW:
     steps:
       - uses: actions/checkout@v3
       - name: Setup python
@@ -27,13 +25,15 @@ jobs:
       - name: Run python tests
         working-directory: ./entity-counter-recalculator
         run: python -m unittest test_main.py
-      - name: Install zip
-        uses: montudor/action-zip@v1
-      - name: run zip action
-        run: |
-         chmod +x .github/helpers/zip-files.sh
-         .github/helpers/zip-files.sh
-      - uses: actions/upload-artifact@v3
+
+  build-push-dlcs-entity-counter-recalculator:
+    runs-on: ubuntu-latest
+    needs: test-entity-counter-recalculator
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/docker-build-and-push
         with:
-          name: entity-counter-recalculator
-          path: ./entity-counter-recalculator**
+          image-name: "entity-counter-recalculator"
+          dockerfile: "entity-counter-recalculator/Dockerfile"
+          context: "./entity-counter-recalculator"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
