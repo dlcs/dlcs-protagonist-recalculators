@@ -87,6 +87,7 @@ def __set_cloudwatch_metrics(records, cloudwatch, connection_info):
     ])
 
     try:
+        logger.debug(f"updating cloudwatch metrics - {metric_data}")
         cloudwatch.put_metric_data(MetricData=metric_data,
                                    Namespace='Entity Counter Recalculator')
     except Exception as e:
@@ -153,7 +154,7 @@ def __run_sql(conn):
     logger.info(records)
 
     if DRY_RUN:
-        logger.info(f"DRY RUN ENABLED.  This will not commit to the database")
+        logger.info(f"DRY RUN ENABLED.  Changes have not been committed to the database")
     else:
         conn.commit()
 
