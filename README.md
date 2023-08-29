@@ -70,5 +70,11 @@ the docker container can be built with the following command:
 then run with this command:
 
 ```powershell
-docker run rm -it --env-file { env file location } dlcs-entity-counter-recalculator:local
+docker run rm -it --env-file { env file location } -p 9000:8080 dlcs-entity-counter-recalculator:local
+```
+
+you can then call the function using curl (technically Invoke-WebRequest):
+
+```powershell
+curl "http://localhost:9000/2015-03-31/functions/function/invocations" -body '{}' -Method POST
 ```

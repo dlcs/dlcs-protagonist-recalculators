@@ -208,3 +208,8 @@ def __get_connection_string():
 
 if __name__ == "__main__":
     begin_cleanup()
+
+
+def handler(event, context):
+    logger.debug("calling handler...")
+    return begin_cleanup()
