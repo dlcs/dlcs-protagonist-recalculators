@@ -206,6 +206,7 @@ def __get_connection_string():
             logger.error(f"Error retrieving ssm parameter: {e}")
             raise e
 
+
 if __name__ == "__main__":
     begin_cleanup()
 
