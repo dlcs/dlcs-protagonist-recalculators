@@ -18,26 +18,30 @@ def begin_cleanup():
     if ENABLE_CLOUDWATCH_INTEGRATION:
         logger.info("setting cloudwatch metrics")
         cloudwatch = app.aws_factory.get_aws_client("cloudwatch")
-        __set_cloudwatch_metrics(records, cloudwatch, connection_info)
+        set_cloudwatch_metrics(records, cloudwatch, connection_info)
 
     conn.close()
 
     return records
 
 
-def __set_cloudwatch_metrics(records, cloudwatch, connection_info):
+def set_cloudwatch_metrics(records, cloudwatch, connection_info):
     customer_delta = 0
     customer_deletes_needed = 0
     metric_data = []
-    dimensions = [
-                {
-                    'Name': 'TABLE_NAME',
+    dimensions = [{
+                    'Name': "TABLE_NAME",
                     'Value': connection_info["database"]
                 },
                 {
-                    'Name': 'APP_VERSION',
+                    'Name': "APP_VERSION",
                     'Value': APP_VERSION
+                },
+                {
+                    'Name': "RECALCULATOR_NAME",
+                    'Value': "entity_counter_recalculator"
                 }]
+
 
     for key in records["customerImages"]:
         logger.info(f"customer images delta found - {key}")
@@ -90,6 +94,7 @@ def __set_cloudwatch_metrics(records, cloudwatch, connection_info):
         logger.debug(f"updating cloudwatch metrics - {metric_data}")
         cloudwatch.put_metric_data(MetricData=metric_data,
                                    Namespace='Entity Counter Recalculator')
+        return metric_data
     except Exception as e:
         logger.error(f"Error posting to cloudwatch: {e}")
         raise e

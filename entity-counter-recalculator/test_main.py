@@ -70,3 +70,81 @@ class TestLambdaFunction(unittest.TestCase):
 
         with self.assertRaises(ParamValidationError):
             main.begin_cleanup()
+
+
+    @mock.patch("psycopg2.connect")
+    @mock.patch("main.CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME", "test1")
+    @mock.patch("main.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
+    @mock.patch("main.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
+    @mock.patch("main.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
+    @mock.patch("main.CONNECTION_STRING", "")
+    @mock_cloudwatch
+    def test_set_cloudwatch_metrics_returns_0_for_all_metrics(self, mock_connect):
+        customer_images = {
+
+        }
+
+        space_images = {
+
+        }
+
+        records = {
+            "customerImages": customer_Images,
+            "spaceImages": space_Images
+        }
+
+        connection_info = {
+            "database": "test"
+        }
+
+        cloudwatch = boto3.client("cloudwatch")
+
+        metric_data = main.set_cloudwatch_metrics(records, cloudwatch, connection_info)
+
+        self.assertEqual(metric_data[0]["Value"], 0)
+        self.assertEqual(metric_data[1]["Value"], 0)
+        self.assertEqual(metric_data[2]["Value"], 0)
+        self.assertEqual(metric_data[3]["Value"], 0)
+
+    @mock.patch("psycopg2.connect")
+    @mock.patch("main.CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME", "test1")
+    @mock.patch("main.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
+    @mock.patch("main.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
+    @mock.patch("main.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
+    @mock.patch("main.CONNECTION_STRING", "")
+    @mock_cloudwatch
+    def test_set_cloudwatch_metrics_returns_not_0_for_all_metrics(self, mock_connect):
+        customer_Images = (
+            {
+                "delta": 10,
+            },
+            {
+                "delta": None
+            }
+        )
+        space_images = (
+            {
+                "delta": 10,
+            },
+            {
+                "delta": None
+            }
+        )
+
+        records = {
+            "customerImages": customer_Images,
+            "spaceImages": space_images
+        }
+
+        connection_info = {
+            "database": "test"
+        }
+
+        cloudwatch = boto3.client("cloudwatch")
+
+        metric_data = main.set_cloudwatch_metrics(records, cloudwatch, connection_info)
+
+        self.assertEqual(metric_data[0]["Value"], 10)
+        self.assertEqual(metric_data[1]["Value"], 1)
+        self.assertEqual(metric_data[2]["Value"], 10)
+        self.assertEqual(metric_data[3]["Value"], 1)
