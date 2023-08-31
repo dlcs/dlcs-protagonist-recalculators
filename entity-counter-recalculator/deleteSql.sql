@@ -22,8 +22,8 @@ SELECT 'customer-images', x.count::bigint, x.customer
       GROUP BY customer) as x)
 DELETE FROM "EntityCounters" as y
        USING cte
-       WHERE y."Scope"::int = cte.customer and "Type" = 'customer-images' AND "Next" = 0 AND cte.count = 0
-RETURNING "Scope" as customerDeleted;
+       WHERE "Type" = 'customer-images' AND "Next" = 0 AND NOT EXISTS(SELECT FROM cte
+              WHERE cte.customer = y."Customer" and  AND cte.count IS NULL);
 ROLLBACK;
 
 -- select space images for deletion
@@ -54,7 +54,7 @@ DELETE FROM "EntityCounters" as y
        using cte
         WHERE y."Type" = 'space-images' and y."Next" = 0 and
               NOT EXISTS(SELECT FROM cte
-              WHERE cte.customer = y."Customer" and cte.space::varchar = y."Scope")
+              WHERE cte.customer = y."Customer" and cte.space::varchar = y."Scope" AND cte.count IS NULL)
     RETURNING "Customer", "Scope" as spaceDeleted;
 
 ROLLBACK;
