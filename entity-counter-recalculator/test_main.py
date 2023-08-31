@@ -1,4 +1,5 @@
 import unittest
+import os
 
 import boto3
 from botocore.exceptions import ParamValidationError
@@ -72,14 +73,15 @@ class TestLambdaFunction(unittest.TestCase):
             main.begin_cleanup()
 
 
-    @mock.patch("psycopg2.connect")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME", "test1")
     @mock.patch("main.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("main.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
     @mock.patch("main.CONNECTION_STRING", "")
     @mock_cloudwatch
-    def test_set_cloudwatch_metrics_returns_0_for_all_metrics(self, mock_connect):
+    def test_set_cloudwatch_metrics_returns_0_for_all_metrics(self):
+        aws_credentials()
+
         customer_images = {
 
         }
@@ -89,8 +91,8 @@ class TestLambdaFunction(unittest.TestCase):
         }
 
         records = {
-            "customerImages": customer_Images,
-            "spaceImages": space_Images
+            "customerImages": customer_images,
+            "spaceImages": space_images
         }
 
         connection_info = {
@@ -106,15 +108,15 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(metric_data[2]["Value"], 0)
         self.assertEqual(metric_data[3]["Value"], 0)
 
-    @mock.patch("psycopg2.connect")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME", "test1")
     @mock.patch("main.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("main.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
     @mock.patch("main.CONNECTION_STRING", "")
     @mock_cloudwatch
-    def test_set_cloudwatch_metrics_returns_not_0_for_all_metrics(self, mock_connect):
-        customer_Images = (
+    def test_set_cloudwatch_metrics_returns_not_0_for_all_metrics(self):
+        aws_credentials()
+        customer_images = (
             {
                 "delta": 10,
             },
@@ -132,7 +134,7 @@ class TestLambdaFunction(unittest.TestCase):
         )
 
         records = {
-            "customerImages": customer_Images,
+            "customerImages": customer_images,
             "spaceImages": space_images
         }
 
@@ -148,3 +150,11 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(metric_data[1]["Value"], 1)
         self.assertEqual(metric_data[2]["Value"], 10)
         self.assertEqual(metric_data[3]["Value"], 1)
+
+def aws_credentials():
+    """Mocked AWS Credentials for moto."""
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"

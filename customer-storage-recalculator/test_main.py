@@ -1,15 +1,15 @@
 import unittest
+import os
 
 import boto3
 from botocore.exceptions import ParamValidationError
 
 from unittest import mock
-from moto import mock_cloudwatch, mock_ssm
-from psycopg2._psycopg import Decimal
+from moto import mock_cloudwatch
 
 import main
 
-from psycopg2.extras import RealDictCursor, RealDictRow
+from psycopg2.extras import RealDictCursor
 
 
 class TestLambdaFunction(unittest.TestCase):
@@ -75,7 +75,7 @@ class TestLambdaFunction(unittest.TestCase):
         with self.assertRaises(ParamValidationError):
             main.begin_cleanup()
 
-    @mock.patch("psycopg2.connect")
+
     @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
@@ -84,7 +84,8 @@ class TestLambdaFunction(unittest.TestCase):
     @mock.patch("main.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
     @mock.patch("main.CONNECTION_STRING", "")
     @mock_cloudwatch
-    def test_set_cloudwatch_metrics_returns_0_for_all_metrics(self, mock_connect):
+    def test_set_cloudwatch_metrics_returns_0_for_all_metrics(self):
+        aws_credentials()
         customer_level_changes = {
 
         }
@@ -111,7 +112,7 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(metric_data[2]["Value"], 0)
         self.assertEqual(metric_data[3]["Value"], 0)
 
-    @mock.patch("psycopg2.connect")
+
     @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
@@ -120,7 +121,8 @@ class TestLambdaFunction(unittest.TestCase):
     @mock.patch("main.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
     @mock.patch("main.CONNECTION_STRING", "")
     @mock_cloudwatch
-    def test_set_cloudwatch_metrics_returns_20_for_all_metrics(self, mock_connect):
+    def test_set_cloudwatch_metrics_returns_20_for_all_metrics(self):
+        aws_credentials()
         customer_level_changes = (
             {
                 "totalsizedelta": 10,
@@ -163,3 +165,12 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(metric_data[1]["Value"], 20)
         self.assertEqual(metric_data[2]["Value"], 20)
         self.assertEqual(metric_data[3]["Value"], 20)
+
+
+def aws_credentials():
+    """Mocked AWS Credentials for moto."""
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"
