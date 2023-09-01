@@ -1,6 +1,6 @@
 import boto3
 
-from app.settings import LOCALSTACK, REGION, LOCALSTACK_ADDRESS
+from package.app.settings import LOCALSTACK, REGION, LOCALSTACK_ADDRESS
 from logzero import logger
 
 

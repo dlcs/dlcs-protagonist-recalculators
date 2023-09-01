@@ -16,7 +16,7 @@ class TestLambdaFunction(unittest.TestCase):
 
     @mock.patch("main.ENABLE_CLOUDWATCH_INTEGRATION", False)
     @mock.patch("psycopg2.connect")
-    @mock.patch("main.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    @mock.patch("app.database.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     def test_lambda_handler_returns_mocked_values(self, mock_connect):
         expected = [['fake', 'row', 1], ['fake', 'row', 2]]
 
@@ -39,7 +39,7 @@ class TestLambdaFunction(unittest.TestCase):
     @mock.patch("main.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("main.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
-    @mock.patch("main.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    @mock.patch("app.database.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     def test_lambda_handler_updates_mocked_cloudfront_metrics(self, mock_connect, factory):
         expected = [['fake', 'row', 1], ['fake', 'row', 2]]
 
@@ -61,7 +61,7 @@ class TestLambdaFunction(unittest.TestCase):
     @mock.patch("main.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("main.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
-    @mock.patch("main.CONNECTION_STRING", "")
+    @mock.patch("app.database.CONNECTION_STRING", "")  # pragma: allowlist secret
     def test_lambda_handler_updates_raises_error_with_missing_env_variable(self, mock_connect):
         expected = []
 
@@ -77,7 +77,7 @@ class TestLambdaFunction(unittest.TestCase):
     @mock.patch("main.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("main.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
     @mock.patch("main.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
-    @mock.patch("main.CONNECTION_STRING", "")
+    @mock.patch("app.database.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     @mock_cloudwatch
     def test_set_cloudwatch_metrics_returns_0_for_all_metrics(self):
         aws_credentials()
@@ -150,6 +150,7 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(metric_data[1]["Value"], 1)
         self.assertEqual(metric_data[2]["Value"], 10)
         self.assertEqual(metric_data[3]["Value"], 1)
+
 
 def aws_credentials():
     """Mocked AWS Credentials for moto."""

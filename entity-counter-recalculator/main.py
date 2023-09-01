@@ -7,17 +7,18 @@ from app.settings import (CONNECTION_STRING, DRY_RUN, ENABLE_CLOUDWATCH_INTEGRAT
                           CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME, CLOUDWATCH_SPACE_DELETE_METRIC_NAME,
                           CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME, CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME,
                           CONNECTION_TIMEOUT, APP_VERSION, AWS_CONNECTION_STRING_LOCATION)
-import app.aws_factory
+from app.aws_factory import get_aws_client
+from app.database import connect_to_postgres, get_connection_config
 
 
 def begin_cleanup():
-    connection_info = __get_connection_config()
-    conn = __connect_to_postgres(connection_info)
+    connection_info = get_connection_config()
+    conn = connect_to_postgres(connection_info)
     records = __run_sql(conn)
 
     if ENABLE_CLOUDWATCH_INTEGRATION:
         logger.info("setting cloudwatch metrics")
-        cloudwatch = app.aws_factory.get_aws_client("cloudwatch")
+        cloudwatch = get_aws_client("cloudwatch")
         set_cloudwatch_metrics(records, cloudwatch, connection_info)
 
     conn.close()
@@ -168,48 +169,48 @@ def __run_sql(conn):
     return records
 
 
-def __connect_to_postgres(connection_info):
-    try:
-        logger.debug("connecting to postgres")
-        conn = psycopg2.connect(**connection_info, connect_timeout=CONNECTION_TIMEOUT)
-        return conn
-    except Exception as e:
-        logger.error(f"Error connecting to database: {e}")
-        raise e
-
-
-def __get_connection_config():
-    connection_string = __get_connection_string()
-
-    result = urlparse(connection_string)
-    username = result.username
-    password = result.password
-    database = result.path[1:]
-    hostname = result.hostname
-    port = result.port
-
-    return {
-        "database": database,
-        "user": username,
-        "password": password,
-        "host": hostname,
-        "port": port
-    }
-
-
-def __get_connection_string():
-
-    if CONNECTION_STRING is not None:
-        return CONNECTION_STRING
-    else:
-        logger.debug("retrieving connection string from AWS")
-        try:
-            ssm = app.aws_factory.get_aws_client("ssm")
-            parameter = ssm.get_parameter(Name=AWS_CONNECTION_STRING_LOCATION, WithDecryption=True)
-            return parameter["Parameter"]["Value"]
-        except Exception as e:
-            logger.error(f"Error retrieving ssm parameter: {e}")
-            raise e
+# def __connect_to_postgres(connection_info):
+#     try:
+#         logger.debug("connecting to postgres")
+#         conn = psycopg2.connect(**connection_info, connect_timeout=CONNECTION_TIMEOUT)
+#         return conn
+#     except Exception as e:
+#         logger.error(f"Error connecting to database: {e}")
+#         raise e
+#
+#
+# def __get_connection_config():
+#     connection_string = get_connection_string()
+#
+#     result = urlparse(connection_string)
+#     username = result.username
+#     password = result.password
+#     database = result.path[1:]
+#     hostname = result.hostname
+#     port = result.port
+#
+#     return {
+#         "database": database,
+#         "user": username,
+#         "password": password,
+#         "host": hostname,
+#         "port": port
+#     }
+#
+#
+# def __get_connection_string():
+#
+#     if CONNECTION_STRING is not None:
+#         return CONNECTION_STRING
+#     else:
+#         logger.debug("retrieving connection string from AWS")
+#         try:
+#             ssm = app.aws_factory.get_aws_client("ssm")
+#             parameter = ssm.get_parameter(Name=AWS_CONNECTION_STRING_LOCATION, WithDecryption=True)
+#             return parameter["Parameter"]["Value"]
+#         except Exception as e:
+#             logger.error(f"Error retrieving ssm parameter: {e}")
+#             raise e
 
 
 if __name__ == "__main__":
