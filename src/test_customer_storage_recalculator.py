@@ -7,16 +7,16 @@ from botocore.exceptions import ParamValidationError
 from unittest import mock
 from moto import mock_cloudwatch
 
-import main
+import customer_storage_recalculator
 
 from psycopg2.extras import RealDictCursor
 
 
 class TestLambdaFunction(unittest.TestCase):
 
-    @mock.patch("main.ENABLE_CLOUDWATCH_INTEGRATION", False)
+    @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
     @mock.patch("psycopg2.connect")
-    @mock.patch("main.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     def test_lambda_handler_returns_mocked_values(self, mock_connect):
         expected = [['fake', 'row', 1], ['fake', 'row', 2]]
 
@@ -24,7 +24,7 @@ class TestLambdaFunction(unittest.TestCase):
         mock_cur = mock_con.cursor.return_value
         mock_cur.fetchall.return_value = expected
 
-        result = main.begin_cleanup()
+        result = customer_storage_recalculator.begin_cleanup()
 
         self.assertEqual(result, {'customerChanges': [['fake', 'row', 1], ['fake', 'row', 2]],
                                   'spaceChanges': [['fake', 'row', 1], ['fake', 'row', 2]]})
@@ -34,13 +34,13 @@ class TestLambdaFunction(unittest.TestCase):
     @mock_cloudwatch
     @mock.patch("psycopg2.connect")
     @mock.patch("app.aws_factory")
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
-    @mock.patch("main.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
-    @mock.patch("main.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
-    @mock.patch("main.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
-    @mock.patch("main.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     def test_lambda_handler_updates_mocked_cloudfront_metrics(self, mock_connect, factory):
         expected = [['fake', 'row', 1], ['fake', 'row', 2]]
 
@@ -51,20 +51,20 @@ class TestLambdaFunction(unittest.TestCase):
         factory.get_aws_client = boto3.client("cloudwatch", region_name='eu-west-2')
 
         try:
-            main.begin_cleanup()
+            customer_storage_recalculator.begin_cleanup()
         except Exception:
             self.fail("myFunc() raised ExceptionType unexpectedly!")
 
         mock_con.cursor.asset_called_with(cursor_factory=RealDictCursor)
 
     @mock.patch("psycopg2.connect")
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
-    @mock.patch("main.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
-    @mock.patch("main.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
-    @mock.patch("main.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
-    @mock.patch("main.CONNECTION_STRING", "")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "")
     def test_lambda_handler_updates_raises_error_with_missing_env_variable(self, mock_connect):
         expected = []
 
@@ -73,16 +73,16 @@ class TestLambdaFunction(unittest.TestCase):
         mock_cur.fetchall.return_value = expected
 
         with self.assertRaises(ParamValidationError):
-            main.begin_cleanup()
+            customer_storage_recalculator.begin_cleanup()
 
 
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
-    @mock.patch("main.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
-    @mock.patch("main.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
-    @mock.patch("main.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
-    @mock.patch("main.CONNECTION_STRING", "")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "")
     @mock_cloudwatch
     def test_set_cloudwatch_metrics_returns_0_for_all_metrics(self):
         aws_credentials()
@@ -105,7 +105,7 @@ class TestLambdaFunction(unittest.TestCase):
 
         cloudwatch = boto3.client("cloudwatch")
 
-        metric_data = main.set_cloudwatch_metrics(records, cloudwatch, connection_info)
+        metric_data = customer_storage_recalculator.set_cloudwatch_metrics(records, cloudwatch, connection_info)
 
         self.assertEqual(metric_data[0]["Value"], 0)
         self.assertEqual(metric_data[1]["Value"], 0)
@@ -113,13 +113,13 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(metric_data[3]["Value"], 0)
 
 
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
-    @mock.patch("main.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
-    @mock.patch("main.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
-    @mock.patch("main.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
-    @mock.patch("main.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
-    @mock.patch("main.CONNECTION_STRING", "")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "")
     @mock_cloudwatch
     def test_set_cloudwatch_metrics_returns_20_for_all_metrics(self):
         aws_credentials()
@@ -159,7 +159,7 @@ class TestLambdaFunction(unittest.TestCase):
 
         cloudwatch = boto3.client("cloudwatch")
 
-        metric_data = main.set_cloudwatch_metrics(records, cloudwatch, connection_info)
+        metric_data = customer_storage_recalculator.set_cloudwatch_metrics(records, cloudwatch, connection_info)
 
         self.assertEqual(metric_data[0]["Value"], 20)
         self.assertEqual(metric_data[1]["Value"], 20)
