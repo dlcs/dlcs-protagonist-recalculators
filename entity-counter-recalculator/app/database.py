@@ -1,9 +1,9 @@
 from urllib.parse import urlparse
 
 import psycopg2
-from package.app import aws_factory
-from package.app.settings import CONNECTION_STRING, AWS_CONNECTION_STRING_LOCATION, CONNECTION_TIMEOUT
-from package.logzero import logger
+from app import aws_factory
+from app.settings import CONNECTION_STRING, AWS_CONNECTION_STRING_LOCATION, CONNECTION_TIMEOUT
+from logzero import logger
 
 
 def connect_to_postgres(connection_info):
