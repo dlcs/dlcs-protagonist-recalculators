@@ -5,7 +5,7 @@ import boto3
 from botocore.exceptions import ParamValidationError
 
 from unittest import mock
-from moto import mock_cloudwatch, mock_ssm
+from moto import mock_cloudwatch
 
 import entity_counter_recalculator
 
@@ -16,7 +16,8 @@ class TestLambdaFunction(unittest.TestCase):
 
     @mock.patch("entity_counter_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
     @mock.patch("psycopg2.connect")
-    @mock.patch("entity_counter_recalculator.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    @mock.patch("entity_counter_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     def test_lambda_handler_returns_mocked_values(self, mock_connect):
         expected = [['fake', 'row', 1], ['fake', 'row', 2]]
 
@@ -26,20 +27,17 @@ class TestLambdaFunction(unittest.TestCase):
 
         result = entity_counter_recalculator.begin_cleanup()
 
-        self.assertEqual(result, {'customerImages': [['fake', 'row', 1],
-                                                                  ['fake', 'row', 2]],
-                                               'spaceImages': [['fake', 'row', 1], ['fake', 'row', 2]]})
+        self.assertEqual(result, {'spaceImages': [['fake', 'row', 1], ['fake', 'row', 2]]})
 
         mock_con.cursor.asset_called_with(cursor_factory=RealDictCursor)
 
     @mock_cloudwatch
     @mock.patch("psycopg2.connect")
     @mock.patch("app.aws_factory")
-    @mock.patch("entity_counter_recalculator.CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME", "test1")
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
-    @mock.patch("entity_counter_recalculator.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
-    @mock.patch("entity_counter_recalculator.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    @mock.patch("entity_counter_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     def test_lambda_handler_updates_mocked_cloudfront_metrics(self, mock_connect, factory):
         expected = [['fake', 'row', 1], ['fake', 'row', 2]]
 
@@ -57,10 +55,8 @@ class TestLambdaFunction(unittest.TestCase):
         mock_con.cursor.asset_called_with(cursor_factory=RealDictCursor)
 
     @mock.patch("psycopg2.connect")
-    @mock.patch("entity_counter_recalculator.CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME", "test1")
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
-    @mock.patch("entity_counter_recalculator.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
     @mock.patch("entity_counter_recalculator.CONNECTION_STRING", "")  # pragma: allowlist secret
     def test_lambda_handler_updates_raises_error_with_missing_env_variable(self, mock_connect):
         expected = []
@@ -72,12 +68,10 @@ class TestLambdaFunction(unittest.TestCase):
         with self.assertRaises(ParamValidationError):
             entity_counter_recalculator.begin_cleanup()
 
-
-    @mock.patch("entity_counter_recalculator.CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME", "test1")
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
-    @mock.patch("entity_counter_recalculator.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
-    @mock.patch("entity_counter_recalculator.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    @mock.patch("entity_counter_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     @mock_cloudwatch
     def test_set_cloudwatch_metrics_returns_0_for_all_metrics(self):
         aws_credentials()
@@ -105,13 +99,9 @@ class TestLambdaFunction(unittest.TestCase):
 
         self.assertEqual(metric_data[0]["Value"], 0)
         self.assertEqual(metric_data[1]["Value"], 0)
-        self.assertEqual(metric_data[2]["Value"], 0)
-        self.assertEqual(metric_data[3]["Value"], 0)
 
-    @mock.patch("entity_counter_recalculator.CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME", "test1")
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
-    @mock.patch("entity_counter_recalculator.CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME", "test4")
     @mock.patch("entity_counter_recalculator.CONNECTION_STRING", "")
     @mock_cloudwatch
     def test_set_cloudwatch_metrics_returns_not_0_for_all_metrics(self):
@@ -148,8 +138,6 @@ class TestLambdaFunction(unittest.TestCase):
 
         self.assertEqual(metric_data[0]["Value"], 10)
         self.assertEqual(metric_data[1]["Value"], 1)
-        self.assertEqual(metric_data[2]["Value"], 10)
-        self.assertEqual(metric_data[3]["Value"], 1)
 
 
 def aws_credentials():

@@ -16,7 +16,8 @@ class TestLambdaFunction(unittest.TestCase):
 
     @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
     @mock.patch("psycopg2.connect")
-    @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     def test_lambda_handler_returns_mocked_values(self, mock_connect):
         expected = [['fake', 'row', 1], ['fake', 'row', 2]]
 
@@ -26,21 +27,18 @@ class TestLambdaFunction(unittest.TestCase):
 
         result = customer_storage_recalculator.begin_cleanup()
 
-        self.assertEqual(result, {'customerChanges': [['fake', 'row', 1], ['fake', 'row', 2]],
-                                  'spaceChanges': [['fake', 'row', 1], ['fake', 'row', 2]]})
+        self.assertEqual(result, {'spaceChanges': [['fake', 'row', 1], ['fake', 'row', 2]]})
 
         mock_con.cursor.asset_called_with(cursor_factory=RealDictCursor)
 
     @mock_cloudwatch
     @mock.patch("psycopg2.connect")
     @mock.patch("app.aws_factory")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
-    @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     def test_lambda_handler_updates_mocked_cloudfront_metrics(self, mock_connect, factory):
         expected = [['fake', 'row', 1], ['fake', 'row', 2]]
 
@@ -58,9 +56,6 @@ class TestLambdaFunction(unittest.TestCase):
         mock_con.cursor.asset_called_with(cursor_factory=RealDictCursor)
 
     @mock.patch("psycopg2.connect")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
@@ -75,10 +70,6 @@ class TestLambdaFunction(unittest.TestCase):
         with self.assertRaises(ParamValidationError):
             customer_storage_recalculator.begin_cleanup()
 
-
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
@@ -110,12 +101,7 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(metric_data[0]["Value"], 0)
         self.assertEqual(metric_data[1]["Value"], 0)
         self.assertEqual(metric_data[2]["Value"], 0)
-        self.assertEqual(metric_data[3]["Value"], 0)
 
-
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test1")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test2")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test3")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
@@ -123,18 +109,6 @@ class TestLambdaFunction(unittest.TestCase):
     @mock_cloudwatch
     def test_set_cloudwatch_metrics_returns_20_for_all_metrics(self):
         aws_credentials()
-        customer_level_changes = (
-            {
-                "totalsizedelta": 10,
-                "numberofimagesdelta": 10,
-                "totalsizeofthumbnailsdelta": 10
-            },
-            {
-                "totalsizedelta": 10,
-                "numberofimagesdelta": 10,
-                "totalsizeofthumbnailsdelta": 10
-            }
-        )
         space_level_changes = (
             {
                 "totalsizedelta": 10,
@@ -149,7 +123,6 @@ class TestLambdaFunction(unittest.TestCase):
         )
 
         records = {
-            "customerChanges": customer_level_changes,
             "spaceChanges": space_level_changes
         }
 
@@ -164,7 +137,6 @@ class TestLambdaFunction(unittest.TestCase):
         self.assertEqual(metric_data[0]["Value"], 20)
         self.assertEqual(metric_data[1]["Value"], 20)
         self.assertEqual(metric_data[2]["Value"], 20)
-        self.assertEqual(metric_data[3]["Value"], 20)
 
 
 def aws_credentials():

@@ -3,9 +3,7 @@ from psycopg2 import extras
 
 from logzero import logger
 from app.entity_counter_recalculator_settings import (DRY_RUN, ENABLE_CLOUDWATCH_INTEGRATION,
-                                                      CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME,
                                                       CLOUDWATCH_SPACE_DELETE_METRIC_NAME,
-                                                      CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME,
                                                       CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME,
                                                       APP_VERSION, LOCALSTACK, REGION, LOCALSTACK_ADDRESS,
                                                       CONNECTION_TIMEOUT, CONNECTION_STRING,
@@ -16,7 +14,10 @@ from app.database import connect_to_postgres, get_connection_config
 
 def begin_cleanup():
     connection_info = get_connection_config(connection_string=CONNECTION_STRING,
-                                            aws_connection_string_location=AWS_CONNECTION_STRING_LOCATION)
+                                            aws_connection_string_location=AWS_CONNECTION_STRING_LOCATION,
+                                            region=REGION,
+                                            localstack=LOCALSTACK,
+                                            localstack_address=LOCALSTACK_ADDRESS)
     conn = connect_to_postgres(connection_info=connection_info,connection_timeout=CONNECTION_TIMEOUT)
     records = __run_sql(conn)
 
@@ -47,29 +48,6 @@ def set_cloudwatch_metrics(records, cloudwatch, connection_info):
                     'Name': "RECALCULATOR_NAME",
                     'Value': "entity_counter_recalculator"
                 }]
-
-
-    for key in records["customerImages"]:
-        logger.info(f"customer images delta found - {key}")
-        if key["delta"] is not None:
-            customer_delta += abs(key["delta"])
-        else:
-            customer_deletes_needed += 1
-
-    metric_data.extend([
-        {
-            'MetricName': CLOUDWATCH_CUSTOMER_DIFFERENCE_METRIC_NAME,
-            'Dimensions': dimensions,
-            'Unit': 'None',
-            'Value': customer_delta
-        },
-        {
-            'MetricName': CLOUDWATCH_CUSTOMER_DELETE_METRIC_NAME,
-            'Dimensions': dimensions,
-            'Unit': 'None',
-            'Value': customer_deletes_needed
-        }
-    ])
 
     space_delta = 0
     space_deletes_needed = 0
@@ -109,30 +87,7 @@ def set_cloudwatch_metrics(records, cloudwatch, connection_info):
 def __run_sql(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    # update customer images
-    cur.execute("""
-        WITH cte AS (
-        SELECT 'customer-images', x.count::bigint, x.customer
-            FROM (SELECT count(*) as count, "Customer" as customer
-              FROM "Images"
-              GROUP BY customer) as x), ins as (
-        INSERT INTO "EntityCounters" as y
-        SELECT 'customer-images', cte.customer, cte.count::bigint, 0
-        FROM cte
-        ON CONFLICT ("Type", "Scope", "Customer")
-        DO UPDATE SET ("Type", "Scope", "Next", "Customer") = ROW (excluded.*)
-        RETURNING *)
-        -- selects with `with` execute on snapshots, so changes from the upsert aren't seen here.
-        -- See https://www.postgresql.org/docs/11/queries-with.html
-        SELECT "Scope" as customer, count, "Next", count - "Next" as delta
-        FROM "EntityCounters" as y
-          LEFT OUTER JOIN cte ON cte.customer = "Scope"::int
-            where y."Type" = 'customer-images' and coalesce(count - "Next", -1) != 0
-             order by "Scope"::int;
-    """)
-
-    customer_image_changes = cur.fetchall()
-
+    # update space images
     cur.execute("""
         WITH cte AS (
         SELECT 'space-images', x.space, x.count::bigint, x.customer
@@ -158,8 +113,18 @@ def __run_sql(conn):
 
     space_image_changes = cur.fetchall()
 
+    cur.execute("""
+        UPDATE "EntityCounters"
+        SET "Next" = totalImages
+        FROM (select SUM("Next") AS totalImages,
+                     "Customer"
+            from "EntityCounters"
+            where "Type" = 'space-images'
+            group by "Customer") AS vals
+        WHERE "EntityCounters"."Type" = 'customer-images' and "EntityCounters"."Scope"::INT = vals."Customer";
+    """)
+
     records = {
-        "customerImages": customer_image_changes,
         "spaceImages": space_image_changes}
 
     logger.info(records)

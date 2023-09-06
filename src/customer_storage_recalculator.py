@@ -3,9 +3,6 @@ from psycopg2 import extras
 
 from logzero import logger
 from app.customer_storage_recalculator_settings import (CONNECTION_STRING, DRY_RUN, ENABLE_CLOUDWATCH_INTEGRATION,
-                                                        CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME,
-                                                        CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME,
-                                                        CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME,
                                                         CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME,
                                                         CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME,
                                                         CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME,
@@ -17,7 +14,10 @@ from app.database import connect_to_postgres, get_connection_config
 
 def begin_cleanup():
     connection_info = get_connection_config(connection_string=CONNECTION_STRING,
-                                            aws_connection_string_location=AWS_CONNECTION_STRING_LOCATION)
+                                            aws_connection_string_location=AWS_CONNECTION_STRING_LOCATION,
+                                            region=REGION,
+                                            localstack=LOCALSTACK,
+                                            localstack_address=LOCALSTACK_ADDRESS)
     conn = connect_to_postgres(connection_info=connection_info, connection_timeout=CONNECTION_TIMEOUT)
     records = __run_sql(conn)
 
@@ -33,9 +33,6 @@ def begin_cleanup():
 
 
 def set_cloudwatch_metrics(records, cloudwatch, connection_info):
-    customer_total_image_size_delta = 0
-    customer_total_image_number_delta = 0
-    customer_total_thumbnail_size_delta = 0
     metric_data = []
     dimensions = [{
                     'Name': "TABLE_NAME",
@@ -49,33 +46,6 @@ def set_cloudwatch_metrics(records, cloudwatch, connection_info):
                     'Name': "RECALCULATOR_NAME",
                     'Value': "customer_storage_recalculator"
                 }]
-
-    for key in records["customerChanges"]:
-        logger.info(f"customer delta found - {key}")
-        customer_total_image_size_delta += abs(key["totalsizedelta"])
-        customer_total_image_number_delta += abs(key["numberofimagesdelta"])
-        customer_total_thumbnail_size_delta += abs(key["totalsizeofthumbnailsdelta"])
-
-    metric_data.extend([
-        {
-            'MetricName': CLOUDWATCH_CUSTOMER_IMAGE_SIZE_DIFFERENCE_METRIC_NAME,
-            'Dimensions': dimensions,
-            'Unit': 'None',
-            'Value': customer_total_image_size_delta
-        },
-        {
-            'MetricName': CLOUDWATCH_CUSTOMER_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME,
-            'Dimensions': dimensions,
-            'Unit': 'None',
-            'Value': customer_total_image_number_delta
-        },
-        {
-            'MetricName': CLOUDWATCH_CUSTOMER_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME,
-            'Dimensions': dimensions,
-            'Unit': 'None',
-            'Value': customer_total_thumbnail_size_delta
-        }
-    ])
 
     space_total_image_size_delta = 0
     space_total_image_number_delta = 0
@@ -121,42 +91,7 @@ def set_cloudwatch_metrics(records, cloudwatch, connection_info):
 def __run_sql(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    # update customer images
-    cur.execute("""
-        with cte AS (SELECT "Customer",
-               SUM("Size") AS TotalSizeInImage,
-               Count("Id") AS numberOfImagesInImage,
-               SUM("ThumbnailSize") AS totalSizeOfThumbnailsInImage
-        FROM "ImageStorage" GROUP BY "Customer" ORDER BY "Customer"), ins AS (
-        INSERT INTO "CustomerStorage" AS y
-               SELECT cte."Customer", 'default', cte.numberOfImagesInImage, cte.TotalSizeInImage, cte.totalSizeOfThumbnailsInImage, current_timestamp, 0
-                FROM cte
-               ON CONFLICT ("Customer", "Space")
-               DO UPDATE SET ("Customer", "StoragePolicy", "NumberOfStoredImages", "TotalSizeOfStoredImages", "TotalSizeOfThumbnails", "LastCalculated", "Space") = ROW(excluded.*)
-                   WHERE y."Space" = 0 AND excluded."Customer" IS NOT NULL
-               RETURNING *)
-        SELECT y."Customer",
-               cte."Customer" as customerInImage,
-               y."Space",
-               "TotalSizeOfStoredImages",
-               TotalSizeInImage,
-               coalesce("TotalSizeOfStoredImages", 0) - coalesce(TotalSizeInImage, 0) AS TotalSizeDelta,
-               "NumberOfStoredImages",
-               numberOfImagesInImage,
-               coalesce("NumberOfStoredImages", 0) - coalesce(numberOfImagesInImage, 0) AS NumberOfImagesDelta,
-               "TotalSizeOfThumbnails",
-               totalSizeOfThumbnailsInImage,
-               coalesce("TotalSizeOfThumbnails", 0) - coalesce(totalSizeOfThumbnailsInImage, 0) AS TotalSizeOfThumbnailsDelta
-        -- selects with `with` execute on snapshots, so changes from the upsert aren't seen here.
-        -- See https://www.postgresql.org/docs/11/queries-with.html
-        From "CustomerStorage" AS y
-        RIGHT OUTER JOIN cte ON y."Customer" = cte."Customer" AND y."Space" = 0
-        WHERE   coalesce("TotalSizeOfStoredImages", 0) - coalesce(TotalSizeInImage, 0) != 0 AND cte."Customer" IS NOT NULL
-        ORDER BY y."Customer",  cte."Customer";
-    """)
-
-    customer_level_changes = cur.fetchall()
-
+    # gather differences in space images
     cur.execute("""
         with cte AS (SELECT "Customer", "Space",
                SUM("Size") AS TotalSizeInImage,
@@ -192,9 +127,26 @@ def __run_sql(conn):
 
     space_level_changes = cur.fetchall()
 
+    cur.execute("""
+        UPDATE "CustomerStorage"
+        SET "NumberOfStoredImages"    = numberOfImages,
+            "TotalSizeOfStoredImages" = totalImageSize,
+            "TotalSizeOfThumbnails"   = totalThumbnailSize,
+            "LastCalculated"          = now()
+        FROM (SELECT "Customer",
+                     SUM("NumberOfStoredImages")    AS numberOfImages,
+                     SUM("TotalSizeOfStoredImages") AS totalImageSize,
+                     SUM("TotalSizeOfThumbnails")   AS totalThumbnailSize
+              FROM "CustomerStorage"
+              WHERE "Space" != 0
+              GROUP BY "Customer"
+              ORDER BY "Customer") AS vals
+        WHERE "CustomerStorage"."Customer" = vals."Customer";
+    """)
+
     records = {
-        "customerChanges": customer_level_changes,
-        "spaceChanges": space_level_changes}
+        "spaceChanges": space_level_changes
+    }
 
     logger.info(records)
 
