@@ -128,7 +128,7 @@ def __run_sql(conn):
     space_level_changes = cur.fetchall()
 
     cur.execute("""
-        UPDATE "CustomerStorage"
+        UPDATE "CustomerStorage" as cs
         SET "NumberOfStoredImages"    = numberOfImages,
             "TotalSizeOfStoredImages" = totalImageSize,
             "TotalSizeOfThumbnails"   = totalThumbnailSize,
@@ -141,7 +141,7 @@ def __run_sql(conn):
               WHERE "Space" != 0
               GROUP BY "Customer"
               ORDER BY "Customer") AS vals
-        WHERE "CustomerStorage"."Customer" = vals."Customer";
+        WHERE cs."Customer" = vals."Customer";
     """)
 
     records = {

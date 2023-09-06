@@ -114,14 +114,14 @@ def __run_sql(conn):
     space_image_changes = cur.fetchall()
 
     cur.execute("""
-        UPDATE "EntityCounters"
+        UPDATE "EntityCounters" as ec
         SET "Next" = totalImages
         FROM (select SUM("Next") AS totalImages,
                      "Customer"
             from "EntityCounters"
             where "Type" = 'space-images'
             group by "Customer") AS vals
-        WHERE "EntityCounters"."Type" = 'customer-images' and "EntityCounters"."Scope"::INT = vals."Customer";
+        WHERE ec."Type" = 'customer-images' and ec."Scope"::INT = vals."Customer";
     """)
 
     records = {
