@@ -141,7 +141,7 @@ def __run_sql(conn):
               WHERE "Space" != 0
               GROUP BY "Customer"
               ORDER BY "Customer") AS vals
-        WHERE cs."Customer" = vals."Customer";
+        WHERE cs."Customer" = vals."Customer" AND  "Space" = 0;
     """)
 
     records = {
