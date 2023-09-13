@@ -20,4 +20,4 @@ LOCALSTACK_ADDRESS = os.environ.get("LOCALSTACK_ADDRESS", "http://localhost:4566
 # Postgres
 CONNECTION_STRING = os.environ.get("CONNECTION_STRING")
 CONNECTION_TIMEOUT = os.environ.get("CONNECTION_TIMEOUT")
-DRY_RUN = os.environ.get("DRY_RUN", False)
+DRY_RUN = _get_boolean("DRY_RUN", "False")
