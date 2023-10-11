@@ -64,7 +64,7 @@ data "aws_iam_policy_document" "lambda_docker_function_permissions" {
 }
 
 resource "aws_cloudwatch_event_rule" "lambda_docker_cloudwatch_cron_rule" {
-  name                = "${var.function_name}-cloudwatch-cron-rule"
+  name                = var.function_name
   description         = "${var.function_name} CRON rule for scheduling runs"
   schedule_expression = "cron(${var.cron_schedule})"
 }
