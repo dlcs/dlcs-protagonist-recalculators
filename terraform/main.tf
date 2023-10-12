@@ -16,7 +16,12 @@ resource "aws_lambda_function" "lambda_docker_function" {
   }
 
   environment {
-    variables = var.environment
+    variables = merge(
+      {
+        "AWS_CONNECTION_STRING_LOCATION" = var.ssm_connection_string
+      },
+      var.environment
+    )
   }
 }
 
@@ -55,12 +60,23 @@ data "aws_iam_policy_document" "lambda_docker_function_permissions" {
       "ec2:DeleteNetworkInterface",
       "ec2:AssignPrivateIpAddresses",
       "ec2:UnassignPrivateIpAddresses",
-      "ssm:GetParameter",
       "cloudwatch:PutMetricData"
     ]
 
     resources = ["*"]
   }
+
+  statement {
+    actions = [
+      "ssm:GetParameter",
+    ]
+
+    resources = [data.aws_ssm_parameter.connection_string.arn]
+  }
+}
+
+data "aws_ssm_parameter" "connection_string" {
+  name = var.ssm_connection_string
 }
 
 resource "aws_cloudwatch_event_rule" "lambda_docker_cloudwatch_cron_rule" {

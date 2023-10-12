@@ -20,7 +20,8 @@ variable "security_group_ids" {
 
 variable "environment" {
   type        = map(string)
-  description = "Environment variables to set on lambda"
+  description = "Environment variables to set on lambda, AWS_CONNECTION_STRING_LOCATION automatically set"
+  default     = {}
 }
 
 variable "function_name" {
@@ -36,4 +37,9 @@ variable "cron_schedule" {
 variable "retention_in_days" {
   default     = 14
   description = "Number of days to retain CloudWatch logs for"
+}
+
+variable "ssm_connection_string" {
+  type        = string
+  description = "SSM key storing connection string"
 }
