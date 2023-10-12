@@ -98,11 +98,19 @@ def __run_sql(conn):
                Count("Id") AS numberOfImagesInImage,
                SUM("ThumbnailSize") as totalSizeOfThumbnailsInImage
         FROM "ImageStorage" GROUP BY "Customer", "Space" ORDER BY "Customer", "Space"), ins AS (
-        INSERT INTO "CustomerStorage" AS y
+        INSERT INTO "CustomerStorage"
+               ( "Customer", "StoragePolicy", "NumberOfStoredImages", "TotalSizeOfStoredImages", "TotalSizeOfThumbnails", "LastCalculated", "Space" )
                SELECT cte."Customer", 'default', cte.numberOfImagesInImage, cte.TotalSizeInImage, cte.totalSizeOfThumbnailsInImage, current_timestamp, cte."Space"
                 FROM cte
                ON CONFLICT ("Customer", "Space")
-               DO UPDATE SET ("Customer", "StoragePolicy", "NumberOfStoredImages", "TotalSizeOfStoredImages", "TotalSizeOfThumbnails", "LastCalculated", "Space") = ROW(excluded.*)
+               DO UPDATE SET
+                   "Customer" = excluded."Customer",
+                   "StoragePolicy" = excluded."StoragePolicy",
+                   "NumberOfStoredImages" = excluded."NumberOfStoredImages",
+                   "TotalSizeOfStoredImages" = excluded."TotalSizeOfStoredImages",
+                    "TotalSizeOfThumbnails" = excluded."TotalSizeOfThumbnails",
+                   "LastCalculated" = excluded."LastCalculated",
+                   "Space" = excluded."Space"
                RETURNING *)
         SELECT y."Customer",
                cte."Customer" AS customerInImage,
