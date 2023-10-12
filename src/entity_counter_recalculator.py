@@ -33,8 +33,6 @@ def begin_cleanup():
 
 
 def set_cloudwatch_metrics(records, cloudwatch, connection_info):
-    customer_delta = 0
-    customer_deletes_needed = 0
     metric_data = []
     dimensions = [{
                     'Name': "TABLE_NAME",
