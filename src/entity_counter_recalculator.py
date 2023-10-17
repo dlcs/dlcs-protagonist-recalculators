@@ -35,7 +35,7 @@ def begin_cleanup():
 def set_cloudwatch_metrics(records, cloudwatch, connection_info):
     metric_data = []
     dimensions = [{
-                    'Name': "TABLE_NAME",
+                    'Name': "DATABASE_NAME",
                     'Value': connection_info["database"]
                 },
                 {
@@ -61,13 +61,13 @@ def set_cloudwatch_metrics(records, cloudwatch, connection_info):
         {
             'MetricName': CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME,
             'Dimensions': dimensions,
-            'Unit': 'None',
+            'Unit': 'Count',
             'Value': space_delta
         },
         {
             'MetricName': CLOUDWATCH_SPACE_DELETE_METRIC_NAME,
             'Dimensions': dimensions,
-            'Unit': 'None',
+            'Unit': 'Count',
             'Value': space_deletes_needed
         }
     ])
@@ -75,7 +75,7 @@ def set_cloudwatch_metrics(records, cloudwatch, connection_info):
     try:
         logger.debug(f"updating cloudwatch metrics - {metric_data}")
         cloudwatch.put_metric_data(MetricData=metric_data,
-                                   Namespace='Entity Counter Recalculator')
+                                   Namespace='Protagonist Recalculator')
         return metric_data
     except Exception as e:
         logger.error(f"Error posting to cloudwatch: {e}")
