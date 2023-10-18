@@ -1,5 +1,5 @@
 output "function_name" {
-  value = aws_lambda_function.lambda_docker_function.name
+  value = aws_lambda_function.lambda_docker_function.function_name
 }
 
 output "function_arn" {
