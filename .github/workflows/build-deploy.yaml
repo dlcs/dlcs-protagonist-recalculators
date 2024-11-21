@@ -59,6 +59,7 @@ jobs:
           dockerfile: "src/EntityCounterDockerfile"
           context: "./src"
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          ecr-role: ${{ secrets.ECR_ROLE }}
 
   build-push-dlcs-customer-storage-recalculator:
     runs-on: ubuntu-latest
@@ -71,3 +72,4 @@ jobs:
           dockerfile: "src/CustomerStorageDockerfile"
           context: "./src"
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          ecr-role: ${{ secrets.ECR_ROLE }}

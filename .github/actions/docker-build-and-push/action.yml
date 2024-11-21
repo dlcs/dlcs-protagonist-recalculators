@@ -14,6 +14,9 @@ inputs:
   github-token:
     description: "The GitHub token used when interacting with GCHR."
     required: true
+  ecr-role:
+    description: "The GitHub token used when interacting with GCHR."
+    required: true
 
 runs:
   using: "composite"
@@ -38,7 +41,7 @@ runs:
     - id: configure-aws-creds
       uses: aws-actions/configure-aws-credentials@v4
       with:
-        role-to-assume: ${{ secrets.ECR_ROLE }}
+        role-to-assume: ${{ inputs.ecr-role }}
         aws-region: us-east-1
 
     - id: login-ecr
