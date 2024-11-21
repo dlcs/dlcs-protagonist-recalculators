@@ -67,7 +67,7 @@ runs:
         ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         REGISTRY_ALIAS: j8m2g9d5
       run: |
-        docker tag ${{ env.ECR_REGISTRY }}/${{ env.REGISTRY_ALIAS }}:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.REGISTRY_ALIAS }}:production
+        docker tag ${{ env.ECR_REGISTRY }}/${{ env.REGISTRY_ALIAS }}/${{ inputs.image-name }}:${{ github.sha }} ${{ env.REGISTRY_ALIAS }}/${{ inputs.image-name }}:production
 
 #    - id: build-tag-push
 #      shell: bash
