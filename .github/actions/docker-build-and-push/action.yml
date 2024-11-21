@@ -37,6 +37,8 @@ runs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=semver,pattern={{major}}
+          # change to refs/tags/
+          type=raw,value=production,enable=${{ startsWith(github.ref, 'refs/pull') }}
 
     - id: configure-aws-creds
       uses: aws-actions/configure-aws-credentials@v4
@@ -50,6 +52,12 @@ runs:
         registry-type: public
         mask-password: 'true'
 
+    - id: add-production-tag
+      if: startsWith(github.ref, 'refs/tags/')
+      shell: bash
+      run: |
+        
+
     - id: docker-build-push
       uses: docker/build-push-action@v4
       with:
@@ -60,14 +68,14 @@ runs:
         labels: ${{ steps.docker-meta.outputs.labels }}
         push: ${{ github.actor != 'dependabot[bot]' }}
 
-    - id: tag-production
-#      if: startsWith(github.ref, 'refs/tags/')
-      shell: bash
-      env:
-        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-        REGISTRY_ALIAS: j8m2g9d5
-      run: |
-        docker tag ${{ env.ECR_REGISTRY }}/${{ env.REGISTRY_ALIAS }}/${{ inputs.image-name }}:${{ github.sha }} ${{ env.REGISTRY_ALIAS }}/${{ inputs.image-name }}:production
+#    - id: tag-production
+##      if: startsWith(github.ref, 'refs/tags/')
+#      shell: bash
+#      env:
+#        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+#        REGISTRY_ALIAS: j8m2g9d5
+#      run: |
+#        docker tag ${{ env.ECR_REGISTRY }}/${{ env.REGISTRY_ALIAS }}/${{ inputs.image-name }}:${{ github.sha }} ${{ env.REGISTRY_ALIAS }}/${{ inputs.image-name }}:production
 
 #    - id: build-tag-push
 #      shell: bash
