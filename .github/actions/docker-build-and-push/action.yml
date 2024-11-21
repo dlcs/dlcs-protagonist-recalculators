@@ -22,10 +22,11 @@ runs:
       uses: actions/checkout@v3
     - id: docker-setup-buildx
       uses: docker/setup-buildx-action@v2
+
     - id: docker-meta
       uses: docker/metadata-action@v4
       with:
-        images: ghcr.io/dlcs/${{ inputs.image-name }}
+        images: public.ecr.aws/j8m2g9d5/${{ inputs.image-name }}
         tags: |
           type=ref,event=branch
           type=ref,event=pr
@@ -33,12 +34,19 @@ runs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=semver,pattern={{major}}
-    - id: docker-login
-      uses: docker/login-action@v2
+
+    - id: configure-aws-creds
+      uses: aws-actions/configure-aws-credentials@v4
       with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ inputs.github-token }}
+        role-to-assume: arn:aws:iam::786188361613:role/Delegated_DLCSServices_GitHubActions_CI_retags
+        aws-region: us-east-1
+
+    - id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+      with:
+        registry-type: public
+        mask-password: 'true'
+
     - id: docker-build-push
       uses: docker/build-push-action@v4
       with:
@@ -48,3 +56,40 @@ runs:
         tags: ${{ steps.docker-meta.outputs.tags }}
         labels: ${{ steps.docker-meta.outputs.labels }}
         push: ${{ github.actor != 'dependabot[bot]' }}
+
+    - id: tag-production
+#      if: startsWith(github.ref, 'refs/tags/')
+      shell: bash
+      env:
+        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        REGISTRY_ALIAS: j8m2g9d5
+      run: |
+        docker tag ${{ env.REGISTRY }}/${{ env.REGISTRY_ALIAS }}:${{ github.sha }} ${{ env.REGISTRY }}/${{ env.REGISTRY_ALIAS }}:production
+
+#    - id: build-tag-push
+#      shell: bash
+#      env:
+#        ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+#        ECR_REPOSITORY: j8m2g9d5
+#        IMAGE_TAG: latest
+#      run: |
+#        cd ${{ inputs.context }}
+#        docker build -t ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }} ${{ inputs.dockerfile }}
+#        docker push ${{ env.ECR_REGISTRY }}/${{ env.ECR_REPOSITORY }}:${{ env.IMAGE_TAG }}
+
+
+#    - id: docker-login
+#      uses: docker/login-action@v2
+#      with:
+#        registry: ghcr.io
+#        username: ${{ github.actor }}
+#        password: ${{ inputs.github-token }}
+#    - id: docker-build-push
+#      uses: docker/build-push-action@v4
+#      with:
+#        context: ${{ inputs.context }}
+#        file: ${{ inputs.dockerfile }}
+#        builder: ${{ steps.docker-setup-buildx.outputs.name }}
+#        tags: ${{ steps.docker-meta.outputs.tags }}
+#        labels: ${{ steps.docker-meta.outputs.labels }}
+#        push: ${{ github.actor != 'dependabot[bot]' }}
