@@ -13,6 +13,10 @@ on:
       - "terraform/**"
       - "sql/**"
 
+permissions:
+  id-token: write  # required for OIDC / AWS
+  contents: read   # This is required for actions/checkout
+
 jobs:
   test-entity-counter-recalculator:
     runs-on: ubuntu-latest
