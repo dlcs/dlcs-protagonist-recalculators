@@ -55,7 +55,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/docker-build-and-push
         with:
-          image-name: "entity-counter-recalculator"
+          image-name: "dlcservices-entity-counter-recalculator"
           dockerfile: "src/EntityCounterDockerfile"
           context: "./src"
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -68,7 +68,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: ./.github/actions/docker-build-and-push
         with:
-          image-name: "customer-storage-recalculator"
+          image-name: "dlcservices-customer-storage-recalculator"
           dockerfile: "src/CustomerStorageDockerfile"
           context: "./src"
           github-token: ${{ secrets.GITHUB_TOKEN }}
