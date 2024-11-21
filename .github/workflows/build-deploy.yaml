@@ -58,7 +58,6 @@ jobs:
           image-name: "dlcservices-entity-counter-recalculator"
           dockerfile: "src/EntityCounterDockerfile"
           context: "./src"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           ecr-role: ${{ secrets.ECR_ROLE }}
 
   build-push-dlcs-customer-storage-recalculator:
@@ -71,5 +70,4 @@ jobs:
           image-name: "dlcservices-customer-storage-recalculator"
           dockerfile: "src/CustomerStorageDockerfile"
           context: "./src"
-          github-token: ${{ secrets.GITHUB_TOKEN }}
           ecr-role: ${{ secrets.ECR_ROLE }}
