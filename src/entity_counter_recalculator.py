@@ -98,7 +98,8 @@ def __run_sql(conn):
         SELECT 'space-images', cte.space, cte.count::bigint, cte.customer
         FROM cte
         ON CONFLICT ("Type", "Scope", "Customer")
-        DO UPDATE SET ("Type", "Scope", "Next", "Customer") = ROW (excluded.*)
+        DO UPDATE SET ("Type", "Scope", "Next", "Customer")  =
+            ROW (excluded."Type", excluded."Scope", excluded."Next", excluded."Customer")
         RETURNING *)
         -- selects with `with` execute on snapshots, so changes from the upsert aren't seen here.
         -- See https://www.postgresql.org/docs/11/queries-with.html
