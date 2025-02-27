@@ -94,7 +94,7 @@ def __run_sql(conn):
               GROUP BY customer, space
               ORDER BY customer, space) as x), ins as
                   (
-        INSERT INTO "EntityCounters" ("Type", "Scope", "Customer", "Next")
+        INSERT INTO "EntityCounters" ("Type", "Scope", "Next", "Customer")
         SELECT 'space-images', cte.space, cte.count::bigint, cte.customer
         FROM cte
         ON CONFLICT ("Type", "Scope", "Customer")
