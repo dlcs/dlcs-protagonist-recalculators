@@ -6,8 +6,7 @@ from app.customer_storage_recalculator_settings import (CONNECTION_STRING, DRY_R
                                                         CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME,
                                                         CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME,
                                                         CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME,
-                                                        CONNECTION_TIMEOUT, APP_VERSION, LOCALSTACK, REGION,
-                                                        LOCALSTACK_ADDRESS)
+                                                        CONNECTION_TIMEOUT, APP_VERSION, REGION)
 from app.aws_factory import get_aws_client
 from app.database import connect_to_postgres, get_connection_config
 
@@ -19,8 +18,7 @@ def begin_cleanup():
 
     if ENABLE_CLOUDWATCH_INTEGRATION:
         logger.info("setting cloudwatch metrics")
-        cloudwatch = get_aws_client(resource_type="cloudwatch", localstack=LOCALSTACK,
-                                    region=REGION, localstack_address=LOCALSTACK_ADDRESS)
+        cloudwatch = get_aws_client(resource_type="cloudwatch", region=REGION)
         set_cloudwatch_metrics(records, cloudwatch, connection_info)
 
     conn.close()

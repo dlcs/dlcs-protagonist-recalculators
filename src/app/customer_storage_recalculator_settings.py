@@ -16,10 +16,6 @@ CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME = os.environ.get(
     "CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "SpaceThumbnailSizeDelta")
 APP_VERSION = os.environ.get('APP_VERSION', "1.0")
 
-# LocalStack
-LOCALSTACK = _get_boolean("LOCALSTACK", "False")
-LOCALSTACK_ADDRESS = os.environ.get("LOCALSTACK_ADDRESS", "http://localhost:4566")
-
 # Postgres
 CONNECTION_STRING = os.environ.get("CONNECTION_STRING")
 CONNECTION_TIMEOUT = os.environ.get("CONNECTION_TIMEOUT")

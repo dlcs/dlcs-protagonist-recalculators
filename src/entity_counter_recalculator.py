@@ -5,7 +5,7 @@ from logzero import logger
 from app.entity_counter_recalculator_settings import (DRY_RUN, ENABLE_CLOUDWATCH_INTEGRATION,
                                                       CLOUDWATCH_SPACE_DELETE_METRIC_NAME,
                                                       CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME,
-                                                      APP_VERSION, LOCALSTACK, REGION, LOCALSTACK_ADDRESS,
+                                                      APP_VERSION, REGION,
                                                       CONNECTION_TIMEOUT, CONNECTION_STRING)
 from app.aws_factory import get_aws_client
 from app.database import connect_to_postgres, get_connection_config
@@ -18,8 +18,7 @@ def begin_cleanup():
 
     if ENABLE_CLOUDWATCH_INTEGRATION:
         logger.info("setting cloudwatch metrics")
-        cloudwatch = get_aws_client(resource_type="cloudwatch", localstack=LOCALSTACK,
-                                    region=REGION, localstack_address=LOCALSTACK_ADDRESS)
+        cloudwatch = get_aws_client(resource_type="cloudwatch", region=REGION)
         set_cloudwatch_metrics(records, cloudwatch, connection_info)
 
     conn.close()
