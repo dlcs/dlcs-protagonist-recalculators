@@ -6,18 +6,13 @@ from app.entity_counter_recalculator_settings import (DRY_RUN, ENABLE_CLOUDWATCH
                                                       CLOUDWATCH_SPACE_DELETE_METRIC_NAME,
                                                       CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME,
                                                       APP_VERSION, LOCALSTACK, REGION, LOCALSTACK_ADDRESS,
-                                                      CONNECTION_TIMEOUT, CONNECTION_STRING,
-                                                      AWS_CONNECTION_STRING_LOCATION)
+                                                      CONNECTION_TIMEOUT, CONNECTION_STRING)
 from app.aws_factory import get_aws_client
 from app.database import connect_to_postgres, get_connection_config
 
 
 def begin_cleanup():
-    connection_info = get_connection_config(connection_string=CONNECTION_STRING,
-                                            aws_connection_string_location=AWS_CONNECTION_STRING_LOCATION,
-                                            region=REGION,
-                                            localstack=LOCALSTACK,
-                                            localstack_address=LOCALSTACK_ADDRESS)
+    connection_info = get_connection_config(CONNECTION_STRING)
     conn = connect_to_postgres(connection_info=connection_info,connection_timeout=CONNECTION_TIMEOUT)
     records = __run_sql(conn)
 
@@ -140,8 +135,3 @@ def __run_sql(conn):
 
 if __name__ == "__main__":
     begin_cleanup()
-
-
-def handler(event, context):
-    logger.debug("calling handler...")
-    return begin_cleanup()
