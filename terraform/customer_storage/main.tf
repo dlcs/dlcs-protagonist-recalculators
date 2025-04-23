@@ -1,5 +1,5 @@
 module "customer_storage" {
-  source = "./module"
+  source = "../scheduled"
 
   recalc_type = "customer-storage"
 

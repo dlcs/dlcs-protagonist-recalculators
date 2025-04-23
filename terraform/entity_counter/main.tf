@@ -1,5 +1,5 @@
 module "entity_counter" {
-  source = "./module"
+  source = "../scheduled"
 
   recalc_type = "entity-counter"
 
