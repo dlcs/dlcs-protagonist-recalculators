@@ -1,4 +1,4 @@
-name: Test and push protagonist recalculator lambda functions
+name: Test and push protagonist recalculator
 
 on:
   push:
