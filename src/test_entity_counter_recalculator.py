@@ -12,13 +12,13 @@ import entity_counter_recalculator
 from psycopg2.extras import RealDictCursor
 
 
-class TestLambdaFunction(unittest.TestCase):
+class TestFunction(unittest.TestCase):
 
     @mock.patch("entity_counter_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
     @mock.patch("psycopg2.connect")
     @mock.patch("entity_counter_recalculator.CONNECTION_STRING",
                 "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
-    def test_lambda_handler_returns_mocked_values(self, mock_connect):
+    def test_handler_returns_mocked_values(self, mock_connect):
         expected = [['fake', 'row', 1], ['fake', 'row', 2]]
 
         mock_con = mock_connect.return_value
@@ -38,7 +38,7 @@ class TestLambdaFunction(unittest.TestCase):
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
     @mock.patch("entity_counter_recalculator.CONNECTION_STRING",
                 "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
-    def test_lambda_handler_updates_mocked_cloudfront_metrics(self, mock_connect, factory):
+    def test_handler_updates_mocked_cloudfront_metrics(self, mock_connect, factory):
         expected = [['fake', 'row', 1], ['fake', 'row', 2]]
 
         mock_con = mock_connect.return_value
@@ -58,7 +58,7 @@ class TestLambdaFunction(unittest.TestCase):
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")
     @mock.patch("entity_counter_recalculator.CONNECTION_STRING", "")  # pragma: allowlist secret
-    def test_lambda_handler_updates_raises_error_with_missing_env_variable(self, mock_connect):
+    def test_handler_updates_raises_error_with_missing_env_variable(self, mock_connect):
         expected = []
 
         mock_con = mock_connect.return_value
