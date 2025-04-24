@@ -23,6 +23,8 @@ module "recalc_container_definition" {
     secretOptions = null
   }
 
+  memory = 128
+
   name  = local.full_name
   image = "${var.docker_image}:${var.docker_tag}"
 }
@@ -31,9 +33,8 @@ module "recalc_task" {
   source = "git::https://github.com/digirati-co-uk/terraform-aws-modules.git//tf/modules/ecs/task_definition/?ref=v3.35"
 
   task_name    = local.full_name
-  cpu          = 256
-  memory       = 512
-  launch_types = ["FARGATE"]
+  network_mode = "bridge"
+  launch_types = ["EC2"]
 
   container_definitions = [module.recalc_container_definition.container_definition]
 }
@@ -120,18 +121,7 @@ resource "aws_cloudwatch_event_target" "event_target" {
   role_arn  = aws_iam_role.scheduled_task.arn
 
   ecs_target {
-    capacity_provider_strategy {
-      capacity_provider = "FARGATE_SPOT"
-      base              = 1
-      weight            = 1
-    }
-    
+    launch_type         = "EC2"
     task_definition_arn = module.recalc_task.arn
-
-    network_configuration {
-      subnets          = var.subnet_ids
-      security_groups  = var.security_group_ids
-      assign_public_ip = false
-    }
   }
 }

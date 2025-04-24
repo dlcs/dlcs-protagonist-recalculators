@@ -1,25 +1,25 @@
 variable "connection_string_secret" {
-  type = string
+  type        = string
   description = "Path to SecretsManager secret containing connection string"
 }
 
 variable "cloudwatch_log_group" {
-  type = string
+  type        = string
   description = "CW Log group for logs"
 }
 
 variable "region" {
-  type = string
+  type        = string
   description = "AWS region"
 }
 
 variable "account_id" {
-  type = string
+  type        = string
   description = "AWS account id"
 }
 
 variable "recalc_type" {
-  type = string
+  type        = string
   description = "Type of recalculator function"
 }
 
@@ -38,17 +38,17 @@ variable "environment" {
 }
 
 variable "prefix" {
-  type = string
+  type        = string
   description = "Prefix value for use in naming"
 }
 
 variable "schedule" {
-  type = string
+  type        = string
   description = "Scheduling expressing, either cron() or rate() expression"
 }
 
 variable "cluster_arn" {
-  type = string
+  type        = string
   description = "ARN of ECS cluster for task"
 }
 
