@@ -46,6 +46,27 @@ module "recalc_secrets" {
   secrets   = local.secrets
 }
 
+# Permissions
+data "aws_iam_policy_document" "put_cloudwatch_metrics" {
+  statement {
+    effect = "Allow"
+
+    actions = [
+      "cloudwatch:PutMetricData",
+    ]
+
+    resources = [
+      "*"
+    ]
+  }
+}
+
+resource "aws_iam_role_policy" "put_cloudwatch_metrics" {
+  name   = "${local.full_name}-put-cloudwatch-metrics"
+  role   = module.recalc_task.task_role_name
+  policy = data.aws_iam_policy_document.put_cloudwatch_metrics.json
+}
+
 # Scheduling..
 data "aws_iam_policy_document" "cloudwatch_event_assume_role" {
   statement {
