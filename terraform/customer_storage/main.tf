@@ -13,7 +13,5 @@ module "customer_storage" {
   prefix                   = var.prefix
   schedule                 = var.schedule
   cluster_arn              = var.cluster_arn
-  subnet_ids               = var.subnet_ids
-  security_group_ids       = var.security_group_ids
 }
 
