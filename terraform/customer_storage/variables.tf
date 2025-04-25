@@ -48,13 +48,3 @@ variable "cluster_arn" {
   type        = string
   description = "ARN of ECS cluster for task"
 }
-
-variable "subnet_ids" {
-  type        = list(string)
-  description = "List of subnet Ids associated with the ECS task."
-}
-
-variable "security_group_ids" {
-  type        = list(string)
-  description = "List of security group IDs associated with the ECS task"
-}
