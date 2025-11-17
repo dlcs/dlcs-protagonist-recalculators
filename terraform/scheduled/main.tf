@@ -7,7 +7,7 @@ locals {
 }
 
 module "recalc_container_definition" {
-  source = "git::https://github.com/digirati-co-uk/terraform-aws-modules.git//tf/modules/ecs/container_definition/?ref=v3.35"
+  source = "git::https://github.com/digirati-co-uk/terraform-aws-modules.git//tf/modules/ecs/container_definition/?ref=v3.39"
 
   secrets     = local.secrets
   environment = var.environment
@@ -30,7 +30,7 @@ module "recalc_container_definition" {
 }
 
 module "recalc_task" {
-  source = "git::https://github.com/digirati-co-uk/terraform-aws-modules.git//tf/modules/ecs/task_definition/?ref=v3.35"
+  source = "git::https://github.com/digirati-co-uk/terraform-aws-modules.git//tf/modules/ecs/task_definition/?ref=v3.39"
 
   task_name    = local.full_name
   network_mode = "bridge"
@@ -40,7 +40,7 @@ module "recalc_task" {
 }
 
 module "recalc_secrets" {
-  source = "git::https://github.com/digirati-co-uk/terraform-aws-modules.git//tf/modules/services/tasks/secrets/?ref=v3.35"
+  source = "git::https://github.com/digirati-co-uk/terraform-aws-modules.git//tf/modules/services/tasks/secrets/?ref=v3.39"
 
   role_name = module.recalc_task.task_execution_role_name
   secrets   = local.secrets
