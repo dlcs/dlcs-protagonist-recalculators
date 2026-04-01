@@ -11,17 +11,19 @@ from app.aws_factory import get_aws_client
 from app.database import connect_to_postgres, get_connection_config
 
 
-def begin_cleanup():
+def run_cleanup():
+    logger.info("Running customer storage recalculator")
     connection_info = get_connection_config(CONNECTION_STRING)
     conn = connect_to_postgres(connection_info=connection_info, connection_timeout=CONNECTION_TIMEOUT)
     records = __run_sql(conn)
 
     if ENABLE_CLOUDWATCH_INTEGRATION:
-        logger.info("setting cloudwatch metrics")
+        logger.info("CloudWatch metrics enabled")
         cloudwatch = get_aws_client(resource_type="cloudwatch", region=REGION)
         set_cloudwatch_metrics(records, cloudwatch, connection_info)
 
     conn.close()
+    logger.info("Customer storage recalculator complete")
 
     return records
 
@@ -46,7 +48,7 @@ def set_cloudwatch_metrics(records, cloudwatch, connection_info):
     space_total_thumbnail_size_delta = 0
 
     for key in records["spaceChanges"]:
-        logger.info(f"space delta found - {key}")
+        logger.info(f"Space delta - {key}")
         space_total_image_size_delta += abs(key["totalsizedelta"])
         space_total_image_number_delta += abs(key["numberofimagesdelta"])
         space_total_thumbnail_size_delta += abs(key["totalsizeofthumbnailsdelta"])
@@ -73,12 +75,12 @@ def set_cloudwatch_metrics(records, cloudwatch, connection_info):
     ])
 
     try:
-        logger.debug(f"updating cloudwatch metrics - {metric_data}")
+        logger.debug(f"Publishing CloudWatch metrics - {metric_data}")
         cloudwatch.put_metric_data(MetricData=metric_data,
                                    Namespace='Protagonist Recalculator')
         return metric_data
     except Exception as e:
-        logger.error(f"Error posting to cloudwatch: {e}")
+        logger.exception(f"Error publishing to CloudWatch")
         raise e
 
 
@@ -153,7 +155,7 @@ def __run_sql(conn):
     logger.info(records)
 
     if DRY_RUN:
-        logger.info(f"DRY RUN ENABLED.  Changes have not been committed to the database")
+        logger.info(f"DRY RUN ENABLED. Changes have not been committed to the database")
     else:
         conn.commit()
 
@@ -163,4 +165,4 @@ def __run_sql(conn):
 
 
 if __name__ == "__main__":
-    begin_cleanup()
+    run_cleanup()
