@@ -25,7 +25,7 @@ class TestFunction(unittest.TestCase):
         mock_cur = mock_con.cursor.return_value
         mock_cur.fetchall.return_value = expected
 
-        result = entity_counter_recalculator.begin_cleanup()
+        result = entity_counter_recalculator.run_cleanup()
 
         self.assertEqual(result, {'spaceImages': [['fake', 'row', 1], ['fake', 'row', 2]]})
 
@@ -48,7 +48,7 @@ class TestFunction(unittest.TestCase):
         factory.get_aws_client = boto3.client("cloudwatch", region_name='eu-west-2')
 
         try:
-            entity_counter_recalculator.begin_cleanup()
+            entity_counter_recalculator.run_cleanup()
         except Exception:
             self.fail("myFunc() raised ExceptionType unexpectedly!")
 
@@ -66,7 +66,7 @@ class TestFunction(unittest.TestCase):
         mock_cur.fetchall.return_value = expected
 
         with self.assertRaises(ParamValidationError):
-            entity_counter_recalculator.begin_cleanup()
+            entity_counter_recalculator.run_cleanup()
 
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DIFFERENCE_METRIC_NAME", "test2")
     @mock.patch("entity_counter_recalculator.CLOUDWATCH_SPACE_DELETE_METRIC_NAME", "test3")

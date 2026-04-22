@@ -25,7 +25,7 @@ class TestFunction(unittest.TestCase):
         mock_cur = mock_con.cursor.return_value
         mock_cur.fetchall.return_value = expected
 
-        result = customer_storage_recalculator.begin_cleanup()
+        result = customer_storage_recalculator.run_cleanup()
 
         self.assertEqual(result, {'spaceChanges': [['fake', 'row', 1], ['fake', 'row', 2]]})
 
@@ -49,7 +49,7 @@ class TestFunction(unittest.TestCase):
         factory.get_aws_client = boto3.client("cloudwatch", region_name='eu-west-2')
 
         try:
-            customer_storage_recalculator.begin_cleanup()
+            customer_storage_recalculator.run_cleanup()
         except Exception:
             self.fail("myFunc() raised ExceptionType unexpectedly!")
 
@@ -68,7 +68,7 @@ class TestFunction(unittest.TestCase):
         mock_cur.fetchall.return_value = expected
 
         with self.assertRaises(ParamValidationError):
-            customer_storage_recalculator.begin_cleanup()
+            customer_storage_recalculator.run_cleanup()
 
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
