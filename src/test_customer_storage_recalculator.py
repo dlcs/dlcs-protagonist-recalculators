@@ -132,11 +132,9 @@ class TestFunction(unittest.TestCase):
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "")
     def test_handler_updates_raises_error_with_missing_env_variable(self, mock_connect):
-        expected = []
-
         mock_con = mock_connect.return_value
         mock_cur = mock_con.cursor.return_value
-        mock_cur.fetchall.return_value = expected
+        mock_cur.fetchall.side_effect = [[], []]
 
         with self.assertRaises(ParamValidationError):
             customer_storage_recalculator.run_cleanup()
