@@ -23,28 +23,99 @@ class TestFunction(unittest.TestCase):
 
         mock_con = mock_connect.return_value
         mock_cur = mock_con.cursor.return_value
-        mock_cur.fetchall.return_value = expected
+        mock_cur.fetchall.side_effect = [expected, []]
 
         result = customer_storage_recalculator.run_cleanup()
 
         self.assertEqual(result, {'spaceChanges': [['fake', 'row', 1], ['fake', 'row', 2]]})
 
-        mock_con.cursor.asset_called_with(cursor_factory=RealDictCursor)
+        mock_con.cursor.assert_called_with(cursor_factory=RealDictCursor)
+
+    @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
+    @mock.patch("psycopg2.connect")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    def test_handler_zeros_out_emptied_spaces(self, mock_connect):
+        zeroed_changes = [
+            {
+                "customer": 1,
+                "space": 2,
+                "totalsizeofstoreimages": 100,
+                "totalsizeinimage": 0,
+                "totalsizedelta": 100,
+                "numberofstoredimages": 5,
+                "numberofimagesinimage": 0,
+                "numberofimagesdelta": 5,
+                "totalsizeofthumbnails": 50,
+                "totalsizeofthumbnailsinimage": 0,
+                "totalsizeofthumbnailsdelta": 50,
+            }
+        ]
+
+        mock_con = mock_connect.return_value
+        mock_cur = mock_con.cursor.return_value
+        mock_cur.fetchall.side_effect = [[], zeroed_changes]
+
+        result = customer_storage_recalculator.run_cleanup()
+
+        self.assertEqual(result, {'spaceChanges': zeroed_changes})
+
+    @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
+    @mock.patch("psycopg2.connect")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    def test_handler_returns_combined_space_and_zeroed_changes(self, mock_connect):
+        space_changes = [{'customer': 1, 'space': 1, 'totalsizedelta': 50}]
+        zeroed_changes = [{'customer': 1, 'space': 2, 'totalsizedelta': 100}]
+
+        mock_con = mock_connect.return_value
+        mock_cur = mock_con.cursor.return_value
+        mock_cur.fetchall.side_effect = [space_changes, zeroed_changes]
+
+        result = customer_storage_recalculator.run_cleanup()
+
+        self.assertEqual(result, {'spaceChanges': space_changes + zeroed_changes})
+
+    @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
+    @mock.patch("customer_storage_recalculator.DRY_RUN", False)
+    @mock.patch("psycopg2.connect")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    def test_handler_commits_when_not_dry_run(self, mock_connect):
+        mock_con = mock_connect.return_value
+        mock_cur = mock_con.cursor.return_value
+        mock_cur.fetchall.side_effect = [[], []]
+
+        customer_storage_recalculator.run_cleanup()
+
+        mock_con.commit.assert_called_once()
+
+    @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
+    @mock.patch("customer_storage_recalculator.DRY_RUN", True)
+    @mock.patch("psycopg2.connect")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    def test_handler_does_not_commit_when_dry_run(self, mock_connect):
+        mock_con = mock_connect.return_value
+        mock_cur = mock_con.cursor.return_value
+        mock_cur.fetchall.side_effect = [[], []]
+
+        customer_storage_recalculator.run_cleanup()
+
+        mock_con.commit.assert_not_called()
 
     @mock_cloudwatch
-    @mock.patch("psycopg2.connect")
     @mock.patch("app.aws_factory")
+    @mock.patch("psycopg2.connect")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
                 "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     def test_handler_updates_mocked_cloudfront_metrics(self, mock_connect, factory):
-        expected = [['fake', 'row', 1], ['fake', 'row', 2]]
-
         mock_con = mock_connect.return_value
         mock_cur = mock_con.cursor.return_value
-        mock_cur.fetchall.return_value = expected
+        mock_cur.fetchall.side_effect = [[], []]
 
         factory.get_aws_client = boto3.client("cloudwatch", region_name='eu-west-2')
 
@@ -53,7 +124,7 @@ class TestFunction(unittest.TestCase):
         except Exception:
             self.fail("myFunc() raised ExceptionType unexpectedly!")
 
-        mock_con.cursor.asset_called_with(cursor_factory=RealDictCursor)
+        mock_con.cursor.assert_called_with(cursor_factory=RealDictCursor)
 
     @mock.patch("psycopg2.connect")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")

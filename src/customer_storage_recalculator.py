@@ -87,27 +87,47 @@ def set_cloudwatch_metrics(records, cloudwatch, connection_info):
 def __run_sql(conn):
     cur = conn.cursor(cursor_factory=psycopg2.extras.RealDictCursor)
 
-    # gather differences in space images
+    # Step 1: aggregate ImageStorage per customer/space and upsert into CustomerStorage.
+    # The CTE produces fresh totals from the source-of-truth ImageStorage table.
+    # The UPSERT inserts new rows for customer/space pairs not yet in CustomerStorage,
+    # or updates existing rows when totals have changed.
+    # ON CONFLICT targets the partial unique index on (Customer, Space) WHERE Space IS NOT NULL,
+    # which covers all real spaces including space 0 (stub assets). The NULL-space aggregate
+    # row is never written here — it is derived in step 3.
+    # The final SELECT returns the pre-upsert snapshot joined against the new CTE values so
+    # we can report deltas. CTEs execute on a snapshot before any DML in the same statement,
+    # so CustomerStorage reads here reflect the state *before* the upsert.
+    # See https://www.postgresql.org/docs/11/queries-with.html
     cur.execute("""
-        with cte AS (SELECT "Customer", "Space",
-               SUM("Size") AS TotalSizeInImage,
-               Count("Id") AS numberOfImagesInImage,
-               SUM("ThumbnailSize") as totalSizeOfThumbnailsInImage
-        FROM "ImageStorage" GROUP BY "Customer", "Space" ORDER BY "Customer", "Space"), ins AS (
-        INSERT INTO "CustomerStorage"
-               ( "Customer", "StoragePolicy", "NumberOfStoredImages", "TotalSizeOfStoredImages", "TotalSizeOfThumbnails", "LastCalculated", "Space" )
-               SELECT cte."Customer", 'default', cte.numberOfImagesInImage, cte.TotalSizeInImage, cte.totalSizeOfThumbnailsInImage, current_timestamp, cte."Space"
-                FROM cte
-               ON CONFLICT ("Customer", "Space")
-               DO UPDATE SET
-                   "Customer" = excluded."Customer",
-                   "StoragePolicy" = excluded."StoragePolicy",
-                   "NumberOfStoredImages" = excluded."NumberOfStoredImages",
-                   "TotalSizeOfStoredImages" = excluded."TotalSizeOfStoredImages",
-                    "TotalSizeOfThumbnails" = excluded."TotalSizeOfThumbnails",
-                   "LastCalculated" = excluded."LastCalculated",
-                   "Space" = excluded."Space"
-               RETURNING *)
+        -- Aggregate current totals from ImageStorage for every customer/space combination.
+        WITH cte AS (
+            SELECT "Customer", "Space",
+                   SUM("Size")          AS TotalSizeInImage,
+                   COUNT("Id")          AS numberOfImagesInImage,
+                   SUM("ThumbnailSize") AS totalSizeOfThumbnailsInImage
+            FROM "ImageStorage"
+            GROUP BY "Customer", "Space"
+            ORDER BY "Customer", "Space"
+        ),
+        -- Upsert the fresh aggregates into CustomerStorage for all non-null spaces.
+        ins AS (
+            INSERT INTO "CustomerStorage"
+                   ( "Customer", "StoragePolicy", "NumberOfStoredImages", "TotalSizeOfStoredImages", "TotalSizeOfThumbnails", "LastCalculated", "Space" )
+                   SELECT cte."Customer", 'default', cte.numberOfImagesInImage, cte.TotalSizeInImage, cte.totalSizeOfThumbnailsInImage, current_timestamp, cte."Space"
+                    FROM cte
+                   ON CONFLICT ("Customer", "Space") WHERE "Space" IS NOT NULL
+                   DO UPDATE SET
+                       "Customer" = excluded."Customer",
+                       "StoragePolicy" = excluded."StoragePolicy",
+                       "NumberOfStoredImages" = excluded."NumberOfStoredImages",
+                       "TotalSizeOfStoredImages" = excluded."TotalSizeOfStoredImages",
+                        "TotalSizeOfThumbnails" = excluded."TotalSizeOfThumbnails",
+                       "LastCalculated" = excluded."LastCalculated",
+                       "Space" = excluded."Space"
+                   RETURNING *
+        )
+        -- Return only rows where something changed, comparing the pre-upsert CustomerStorage
+        -- snapshot against the freshly aggregated ImageStorage values.
         SELECT y."Customer",
                cte."Customer" AS customerInImage,
                y."Space",
@@ -121,31 +141,86 @@ def __run_sql(conn):
                "TotalSizeOfThumbnails",
                totalSizeOfThumbnailsInImage,
                coalesce("TotalSizeOfThumbnails", 0) - coalesce(totalSizeOfThumbnailsInImage, 0) AS TotalSizeOfThumbnailsDelta
-        -- selects with `with` execute on snapshots, so changes from the upsert aren't seen here.
-        -- See https://www.postgresql.org/docs/11/queries-with.html
-        From "CustomerStorage" AS y
+        FROM "CustomerStorage" AS y
         RIGHT OUTER JOIN cte ON y."Customer" = cte."Customer" AND y."Space" = cte."Space"
-        WHERE   coalesce("TotalSizeOfStoredImages", 0) - coalesce(TotalSizeInImage, 0) != 0
-        ORDER BY y."Customer",  cte."Customer", y."Space" , cte."Space";
+        WHERE coalesce("TotalSizeOfStoredImages", 0) - coalesce(TotalSizeInImage, 0) != 0
+        ORDER BY y."Customer", cte."Customer", y."Space", cte."Space";
         """)
 
     space_level_changes = cur.fetchall()
 
+    # Step 2: zero out CustomerStorage rows for spaces that no longer have any ImageStorage records.
+    # The upsert in step 1 only touches spaces that currently exist in ImageStorage, so a space
+    # whose last image was deleted would be silently skipped and retain stale non-zero totals.
+    # Only non-null spaces are considered — the NULL aggregate row is never written directly.
+    # The old values are captured via the to_zero CTE (which reads the pre-update snapshot) so
+    # they can be reported as deltas alongside the changes from step 1.
     cur.execute("""
-        UPDATE "CustomerStorage" as cs
+        -- Identify non-null spaces that have non-zero totals but no remaining ImageStorage records.
+        WITH to_zero AS (
+            SELECT "Customer", "Space",
+                   "NumberOfStoredImages", "TotalSizeOfStoredImages", "TotalSizeOfThumbnails"
+            FROM "CustomerStorage"
+            WHERE "Space" IS NOT NULL
+              AND NOT EXISTS (
+                SELECT 1 FROM "ImageStorage"
+                WHERE "ImageStorage"."Customer" = "CustomerStorage"."Customer"
+                  AND "ImageStorage"."Space" = "CustomerStorage"."Space"
+              )
+              AND ("NumberOfStoredImages" != 0 OR "TotalSizeOfStoredImages" != 0 OR "TotalSizeOfThumbnails" != 0)
+        ),
+        -- Zero out the identified rows.
+        zeroed AS (
+            UPDATE "CustomerStorage"
+            SET "NumberOfStoredImages" = 0,
+                "TotalSizeOfStoredImages" = 0,
+                "TotalSizeOfThumbnails" = 0,
+                "LastCalculated" = current_timestamp
+            FROM to_zero
+            WHERE "CustomerStorage"."Customer" = to_zero."Customer"
+              AND "CustomerStorage"."Space" = to_zero."Space"
+        )
+        -- Return the old (pre-zero) values as deltas so they feed into CloudWatch metrics.
+        SELECT "Customer",
+               "Space",
+               "TotalSizeOfStoredImages",
+               0 AS TotalSizeInImage,
+               "TotalSizeOfStoredImages" AS TotalSizeDelta,
+               "NumberOfStoredImages",
+               0 AS numberOfImagesInImage,
+               "NumberOfStoredImages" AS NumberOfImagesDelta,
+               "TotalSizeOfThumbnails",
+               0 AS totalSizeOfThumbnailsInImage,
+               "TotalSizeOfThumbnails" AS TotalSizeOfThumbnailsDelta
+        FROM to_zero;
+        """)
+
+    zeroed_space_changes = cur.fetchall()
+    space_level_changes = list(space_level_changes) + list(zeroed_space_changes)
+
+    # Step 3: roll up all per-space totals into the NULL-space aggregate row for each customer.
+    # Space IS NULL is the customer-level aggregate (formerly space 0 prior to the
+    # StopSpaceZeroCustomerStorage migration). All non-null spaces — including space 0 which
+    # now tracks stub assets — are included in the sum.
+    cur.execute("""
+        UPDATE "CustomerStorage" AS cs
         SET "NumberOfStoredImages"    = numberOfImages,
             "TotalSizeOfStoredImages" = totalImageSize,
             "TotalSizeOfThumbnails"   = totalThumbnailSize,
             "LastCalculated"          = now()
-        FROM (SELECT "Customer",
-                     SUM("NumberOfStoredImages")    AS numberOfImages,
-                     SUM("TotalSizeOfStoredImages") AS totalImageSize,
-                     SUM("TotalSizeOfThumbnails")   AS totalThumbnailSize
-              FROM "CustomerStorage"
-              WHERE "Space" != 0
-              GROUP BY "Customer"
-              ORDER BY "Customer") AS vals
-        WHERE cs."Customer" = vals."Customer" AND  "Space" = 0;
+        FROM (
+            -- Sum every real space (non-null) per customer to produce the customer-wide totals.
+            SELECT "Customer",
+                   SUM("NumberOfStoredImages")    AS numberOfImages,
+                   SUM("TotalSizeOfStoredImages") AS totalImageSize,
+                   SUM("TotalSizeOfThumbnails")   AS totalThumbnailSize
+            FROM "CustomerStorage"
+            WHERE "Space" IS NOT NULL
+            GROUP BY "Customer"
+            ORDER BY "Customer"
+        ) AS vals
+        -- Write the aggregated totals into the NULL-space row for this customer.
+        WHERE cs."Customer" = vals."Customer" AND "Space" IS NULL;
     """)
 
     records = {
