@@ -38,17 +38,17 @@ class TestFunction(unittest.TestCase):
     def test_handler_zeros_out_emptied_spaces(self, mock_connect):
         zeroed_changes = [
             {
-                "customer": 1,
-                "space": 2,
-                "totalsizeofstoreimages": 100,
-                "totalsizeinimage": 0,
-                "totalsizedelta": 100,
-                "numberofstoredimages": 5,
-                "numberofimagesinimage": 0,
-                "numberofimagesdelta": 5,
-                "totalsizeofthumbnails": 50,
-                "totalsizeofthumbnailsinimage": 0,
-                "totalsizeofthumbnailsdelta": 50,
+                "Customer": 1,
+                "Space": 2,
+                "TotalSizeOfStoredImages": 100,
+                "TotalSizeInImageStorageTable": 0,
+                "TotalSizeDelta": 100,
+                "NumberOfStoredImages": 5,
+                "NumberOfImagesInImageStorageTable": 0,
+                "NumberOfImagesDelta": 5,
+                "TotalSizeOfThumbnails": 50,
+                "TotalSizeOfThumbnailsInImageStorageTable": 0,
+                "TotalSizeOfThumbnailsDelta": 50,
             }
         ]
 
@@ -65,8 +65,8 @@ class TestFunction(unittest.TestCase):
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
                 "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     def test_handler_returns_combined_space_and_zeroed_changes(self, mock_connect):
-        space_changes = [{'customer': 1, 'space': 1, 'totalsizedelta': 50}]
-        zeroed_changes = [{'customer': 1, 'space': 2, 'totalsizedelta': 100}]
+        space_changes = [{'Customer': 1, 'Space': 1, 'TotalSizeDelta': 50}]
+        zeroed_changes = [{'Customer': 1, 'Space': 2, 'TotalSizeDelta': 100}]
 
         mock_con = mock_connect.return_value
         mock_cur = mock_con.cursor.return_value
@@ -110,6 +110,8 @@ class TestFunction(unittest.TestCase):
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_SIZE_DIFFERENCE_METRIC_NAME", "test7")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_NUMBER_DIFFERENCE_METRIC_NAME", "test8")
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
                 "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
     def test_handler_updates_mocked_cloudfront_metrics(self, mock_connect, factory):
@@ -130,6 +132,8 @@ class TestFunction(unittest.TestCase):
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_SIZE_DIFFERENCE_METRIC_NAME", "test7")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_NUMBER_DIFFERENCE_METRIC_NAME", "test8")
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "")
     def test_handler_updates_raises_error_with_missing_env_variable(self, mock_connect):
         mock_con = mock_connect.return_value
@@ -142,21 +146,14 @@ class TestFunction(unittest.TestCase):
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_SIZE_DIFFERENCE_METRIC_NAME", "test7")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_NUMBER_DIFFERENCE_METRIC_NAME", "test8")
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "")
     @mock_cloudwatch
     def test_set_cloudwatch_metrics_returns_0_for_all_metrics(self):
         aws_credentials()
-        customer_level_changes = {
-
-        }
-
-        space_level_changes = {
-
-        }
-
         records = {
-            "customerChanges": customer_level_changes,
-            "spaceChanges": space_level_changes
+            "spaceChanges": {}
         }
 
         connection_info = {
@@ -170,24 +167,32 @@ class TestFunction(unittest.TestCase):
         self.assertEqual(metric_data[0]["Value"], 0)
         self.assertEqual(metric_data[1]["Value"], 0)
         self.assertEqual(metric_data[2]["Value"], 0)
+        self.assertEqual(metric_data[3]["Value"], 0)
+        self.assertEqual(metric_data[4]["Value"], 0)
 
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_SIZE_DIFFERENCE_METRIC_NAME", "test7")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_NUMBER_DIFFERENCE_METRIC_NAME", "test8")
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "")
     @mock_cloudwatch
     def test_set_cloudwatch_metrics_returns_20_for_all_metrics(self):
         aws_credentials()
         space_level_changes = (
             {
-                "totalsizedelta": 10,
-                "numberofimagesdelta": 10,
-                "totalsizeofthumbnailsdelta": 10
+                "TotalSizeDelta": 10,
+                "NumberOfImagesDelta": 10,
+                "TotalSizeOfThumbnailsDelta": 10,
+                "TotalAdjunctSizeDelta": 10,
+                "NumberOfAdjunctsDelta": 10,
             },
             {
-                "totalsizedelta": 10,
-                "numberofimagesdelta": 10,
-                "totalsizeofthumbnailsdelta": 10
+                "TotalSizeDelta": 10,
+                "NumberOfImagesDelta": 10,
+                "TotalSizeOfThumbnailsDelta": 10,
+                "TotalAdjunctSizeDelta": 10,
+                "NumberOfAdjunctsDelta": 10,
             }
         )
 
@@ -206,6 +211,8 @@ class TestFunction(unittest.TestCase):
         self.assertEqual(metric_data[0]["Value"], 20)
         self.assertEqual(metric_data[1]["Value"], 20)
         self.assertEqual(metric_data[2]["Value"], 20)
+        self.assertEqual(metric_data[3]["Value"], 20)
+        self.assertEqual(metric_data[4]["Value"], 20)
 
 
 def aws_credentials():
