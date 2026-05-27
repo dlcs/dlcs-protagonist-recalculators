@@ -49,6 +49,12 @@ class TestFunction(unittest.TestCase):
                 "TotalSizeOfThumbnails": 50,
                 "TotalSizeOfThumbnailsInImageStorageTable": 0,
                 "TotalSizeOfThumbnailsDelta": 50,
+                "TotalSizeOfStoredAdjuncts": 30,
+                "TotalAdjunctSizeInImageStorageTable": 0,
+                "TotalAdjunctSizeDelta": 30,
+                "NumberOfStoredAdjuncts": 3,
+                "NumberOfAdjunctsInAdjunctsTable": 0,
+                "NumberOfAdjunctsDelta": 3,
             }
         ]
 
@@ -153,7 +159,7 @@ class TestFunction(unittest.TestCase):
     def test_set_cloudwatch_metrics_returns_0_for_all_metrics(self):
         aws_credentials()
         records = {
-            "spaceChanges": {}
+            "spaceChanges": []
         }
 
         connection_info = {
