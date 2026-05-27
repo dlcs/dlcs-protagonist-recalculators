@@ -23,28 +23,107 @@ class TestFunction(unittest.TestCase):
 
         mock_con = mock_connect.return_value
         mock_cur = mock_con.cursor.return_value
-        mock_cur.fetchall.return_value = expected
+        mock_cur.fetchall.side_effect = [expected, []]
 
         result = customer_storage_recalculator.run_cleanup()
 
         self.assertEqual(result, {'spaceChanges': [['fake', 'row', 1], ['fake', 'row', 2]]})
 
-        mock_con.cursor.asset_called_with(cursor_factory=RealDictCursor)
+        mock_con.cursor.assert_called_with(cursor_factory=RealDictCursor)
 
-    @mock_cloudwatch
+    @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
     @mock.patch("psycopg2.connect")
-    @mock.patch("app.aws_factory")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
-    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
                 "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
-    def test_handler_updates_mocked_cloudfront_metrics(self, mock_connect, factory):
-        expected = [['fake', 'row', 1], ['fake', 'row', 2]]
+    def test_handler_zeros_out_emptied_spaces(self, mock_connect):
+        zeroed_changes = [
+            {
+                "Customer": 1,
+                "Space": 2,
+                "TotalSizeOfStoredImages": 100,
+                "TotalSizeInImageStorageTable": 0,
+                "TotalSizeDelta": 100,
+                "NumberOfStoredImages": 5,
+                "NumberOfImagesInImageStorageTable": 0,
+                "NumberOfImagesDelta": 5,
+                "TotalSizeOfThumbnails": 50,
+                "TotalSizeOfThumbnailsInImageStorageTable": 0,
+                "TotalSizeOfThumbnailsDelta": 50,
+                "TotalSizeOfStoredAdjuncts": 30,
+                "TotalAdjunctSizeInImageStorageTable": 0,
+                "TotalAdjunctSizeDelta": 30,
+                "NumberOfStoredAdjuncts": 3,
+                "NumberOfAdjunctsInAdjunctsTable": 0,
+                "NumberOfAdjunctsDelta": 3,
+            }
+        ]
 
         mock_con = mock_connect.return_value
         mock_cur = mock_con.cursor.return_value
-        mock_cur.fetchall.return_value = expected
+        mock_cur.fetchall.side_effect = [[], zeroed_changes]
+
+        result = customer_storage_recalculator.run_cleanup()
+
+        self.assertEqual(result, {'spaceChanges': zeroed_changes})
+
+    @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
+    @mock.patch("psycopg2.connect")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    def test_handler_returns_combined_space_and_zeroed_changes(self, mock_connect):
+        space_changes = [{'Customer': 1, 'Space': 1, 'TotalSizeDelta': 50}]
+        zeroed_changes = [{'Customer': 1, 'Space': 2, 'TotalSizeDelta': 100}]
+
+        mock_con = mock_connect.return_value
+        mock_cur = mock_con.cursor.return_value
+        mock_cur.fetchall.side_effect = [space_changes, zeroed_changes]
+
+        result = customer_storage_recalculator.run_cleanup()
+
+        self.assertEqual(result, {'spaceChanges': space_changes + zeroed_changes})
+
+    @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
+    @mock.patch("customer_storage_recalculator.DRY_RUN", False)
+    @mock.patch("psycopg2.connect")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    def test_handler_commits_when_not_dry_run(self, mock_connect):
+        mock_con = mock_connect.return_value
+        mock_cur = mock_con.cursor.return_value
+        mock_cur.fetchall.side_effect = [[], []]
+
+        customer_storage_recalculator.run_cleanup()
+
+        mock_con.commit.assert_called_once()
+
+    @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
+    @mock.patch("customer_storage_recalculator.DRY_RUN", True)
+    @mock.patch("psycopg2.connect")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    def test_handler_does_not_commit_when_dry_run(self, mock_connect):
+        mock_con = mock_connect.return_value
+        mock_cur = mock_con.cursor.return_value
+        mock_cur.fetchall.side_effect = [[], []]
+
+        customer_storage_recalculator.run_cleanup()
+
+        mock_con.commit.assert_not_called()
+
+    @mock_cloudwatch
+    @mock.patch("app.aws_factory")
+    @mock.patch("psycopg2.connect")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_SIZE_DIFFERENCE_METRIC_NAME", "test7")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_NUMBER_DIFFERENCE_METRIC_NAME", "test8")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    def test_handler_updates_mocked_cloudfront_metrics(self, mock_connect, factory):
+        mock_con = mock_connect.return_value
+        mock_cur = mock_con.cursor.return_value
+        mock_cur.fetchall.side_effect = [[], []]
 
         factory.get_aws_client = boto3.client("cloudwatch", region_name='eu-west-2')
 
@@ -53,19 +132,67 @@ class TestFunction(unittest.TestCase):
         except Exception:
             self.fail("myFunc() raised ExceptionType unexpectedly!")
 
-        mock_con.cursor.asset_called_with(cursor_factory=RealDictCursor)
+        mock_con.cursor.assert_called_with(cursor_factory=RealDictCursor)
+
+    @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", True)
+    @mock.patch("customer_storage_recalculator.get_aws_client")
+    @mock.patch("psycopg2.connect")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_SIZE_DIFFERENCE_METRIC_NAME", "test7")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_NUMBER_DIFFERENCE_METRIC_NAME", "test8")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    def test_cloudwatch_metrics_aggregate_space_and_zeroed_changes(self, mock_connect, mock_get_aws_client):
+        space_changes = [
+            {
+                "TotalSizeDelta": 100,
+                "NumberOfImagesDelta": 2,
+                "TotalSizeOfThumbnailsDelta": 20,
+                "TotalAdjunctSizeDelta": 10,
+                "NumberOfAdjunctsDelta": 1,
+            }
+        ]
+        zeroed_changes = [
+            {
+                "TotalSizeDelta": 50,
+                "NumberOfImagesDelta": 3,
+                "TotalSizeOfThumbnailsDelta": 10,
+                "TotalAdjunctSizeDelta": 5,
+                "NumberOfAdjunctsDelta": 2,
+            }
+        ]
+
+        mock_con = mock_connect.return_value
+        mock_cur = mock_con.cursor.return_value
+        mock_cur.fetchall.side_effect = [space_changes, zeroed_changes]
+
+        mock_cloudwatch_client = mock.MagicMock()
+        mock_get_aws_client.return_value = mock_cloudwatch_client
+
+        customer_storage_recalculator.run_cleanup()
+
+        mock_cloudwatch_client.put_metric_data.assert_called_once()
+        metric_data = mock_cloudwatch_client.put_metric_data.call_args.kwargs["MetricData"]
+
+        self.assertEqual(metric_data[0]["Value"], 150)  # 100 + 50
+        self.assertEqual(metric_data[1]["Value"], 5)    # 2 + 3
+        self.assertEqual(metric_data[2]["Value"], 30)   # 20 + 10
+        self.assertEqual(metric_data[3]["Value"], 15)   # 10 + 5
+        self.assertEqual(metric_data[4]["Value"], 3)    # 1 + 2
 
     @mock.patch("psycopg2.connect")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_SIZE_DIFFERENCE_METRIC_NAME", "test7")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_NUMBER_DIFFERENCE_METRIC_NAME", "test8")
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "")
     def test_handler_updates_raises_error_with_missing_env_variable(self, mock_connect):
-        expected = []
-
         mock_con = mock_connect.return_value
         mock_cur = mock_con.cursor.return_value
-        mock_cur.fetchall.return_value = expected
+        mock_cur.fetchall.side_effect = [[], []]
 
         with self.assertRaises(ParamValidationError):
             customer_storage_recalculator.run_cleanup()
@@ -73,21 +200,14 @@ class TestFunction(unittest.TestCase):
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_SIZE_DIFFERENCE_METRIC_NAME", "test7")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_NUMBER_DIFFERENCE_METRIC_NAME", "test8")
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "")
     @mock_cloudwatch
     def test_set_cloudwatch_metrics_returns_0_for_all_metrics(self):
         aws_credentials()
-        customer_level_changes = {
-
-        }
-
-        space_level_changes = {
-
-        }
-
         records = {
-            "customerChanges": customer_level_changes,
-            "spaceChanges": space_level_changes
+            "spaceChanges": []
         }
 
         connection_info = {
@@ -101,24 +221,32 @@ class TestFunction(unittest.TestCase):
         self.assertEqual(metric_data[0]["Value"], 0)
         self.assertEqual(metric_data[1]["Value"], 0)
         self.assertEqual(metric_data[2]["Value"], 0)
+        self.assertEqual(metric_data[3]["Value"], 0)
+        self.assertEqual(metric_data[4]["Value"], 0)
 
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_SIZE_DIFFERENCE_METRIC_NAME", "test7")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_NUMBER_DIFFERENCE_METRIC_NAME", "test8")
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING", "")
     @mock_cloudwatch
     def test_set_cloudwatch_metrics_returns_20_for_all_metrics(self):
         aws_credentials()
         space_level_changes = (
             {
-                "totalsizedelta": 10,
-                "numberofimagesdelta": 10,
-                "totalsizeofthumbnailsdelta": 10
+                "TotalSizeDelta": 10,
+                "NumberOfImagesDelta": 10,
+                "TotalSizeOfThumbnailsDelta": 10,
+                "TotalAdjunctSizeDelta": 10,
+                "NumberOfAdjunctsDelta": 10,
             },
             {
-                "totalsizedelta": 10,
-                "numberofimagesdelta": 10,
-                "totalsizeofthumbnailsdelta": 10
+                "TotalSizeDelta": 10,
+                "NumberOfImagesDelta": 10,
+                "TotalSizeOfThumbnailsDelta": 10,
+                "TotalAdjunctSizeDelta": 10,
+                "NumberOfAdjunctsDelta": 10,
             }
         )
 
@@ -137,6 +265,8 @@ class TestFunction(unittest.TestCase):
         self.assertEqual(metric_data[0]["Value"], 20)
         self.assertEqual(metric_data[1]["Value"], 20)
         self.assertEqual(metric_data[2]["Value"], 20)
+        self.assertEqual(metric_data[3]["Value"], 20)
+        self.assertEqual(metric_data[4]["Value"], 20)
 
 
 def aws_credentials():

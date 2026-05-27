@@ -2,6 +2,7 @@
 CREATE USER customerstoragerecalc_user WITH ENCRYPTED PASSWORD 'xxx';
 GRANT SELECT, INSERT, UPDATE ON "CustomerStorage" TO customerstoragerecalc_user;
 GRANT SELECT ON "ImageStorage" TO customerstoragerecalc_user;
+GRANT SELECT ON "Adjuncts" TO customerstoragerecalc_user;
 
 -- Create user for EntityCounter recalculator script
 CREATE USER entitycounterrecalc_user WITH ENCRYPTED PASSWORD 'xxx';
