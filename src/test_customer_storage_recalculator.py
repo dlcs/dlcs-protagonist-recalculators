@@ -134,6 +134,54 @@ class TestFunction(unittest.TestCase):
 
         mock_con.cursor.assert_called_with(cursor_factory=RealDictCursor)
 
+    @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", True)
+    @mock.patch("customer_storage_recalculator.get_aws_client")
+    @mock.patch("psycopg2.connect")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_THUMBNAIL_SIZE_DIFFERENCE_METRIC_NAME", "test6")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_SIZE_DIFFERENCE_METRIC_NAME", "test7")
+    @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_ADJUNCT_NUMBER_DIFFERENCE_METRIC_NAME", "test8")
+    @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
+                "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
+    def test_cloudwatch_metrics_aggregate_space_and_zeroed_changes(self, mock_connect, mock_get_aws_client):
+        space_changes = [
+            {
+                "TotalSizeDelta": 100,
+                "NumberOfImagesDelta": 2,
+                "TotalSizeOfThumbnailsDelta": 20,
+                "TotalAdjunctSizeDelta": 10,
+                "NumberOfAdjunctsDelta": 1,
+            }
+        ]
+        zeroed_changes = [
+            {
+                "TotalSizeDelta": 50,
+                "NumberOfImagesDelta": 3,
+                "TotalSizeOfThumbnailsDelta": 10,
+                "TotalAdjunctSizeDelta": 5,
+                "NumberOfAdjunctsDelta": 2,
+            }
+        ]
+
+        mock_con = mock_connect.return_value
+        mock_cur = mock_con.cursor.return_value
+        mock_cur.fetchall.side_effect = [space_changes, zeroed_changes]
+
+        mock_cloudwatch_client = mock.MagicMock()
+        mock_get_aws_client.return_value = mock_cloudwatch_client
+
+        customer_storage_recalculator.run_cleanup()
+
+        mock_cloudwatch_client.put_metric_data.assert_called_once()
+        metric_data = mock_cloudwatch_client.put_metric_data.call_args.kwargs["MetricData"]
+
+        self.assertEqual(metric_data[0]["Value"], 150)  # 100 + 50
+        self.assertEqual(metric_data[1]["Value"], 5)    # 2 + 3
+        self.assertEqual(metric_data[2]["Value"], 30)   # 20 + 10
+        self.assertEqual(metric_data[3]["Value"], 15)   # 10 + 5
+        self.assertEqual(metric_data[4]["Value"], 3)    # 1 + 2
+
     @mock.patch("psycopg2.connect")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_SIZE_DIFFERENCE_METRIC_NAME", "test4")
     @mock.patch("customer_storage_recalculator.CLOUDWATCH_SPACE_IMAGE_NUMBER_DIFFERENCE_METRIC_NAME", "test5")
