@@ -205,8 +205,10 @@ def __run_sql(conn):
         FROM "CustomerStorage" AS y
         RIGHT OUTER JOIN cte ON y."Customer" = cte."Customer" AND y."Space" = cte."Space"
         WHERE coalesce("TotalSizeOfStoredImages", 0)       - coalesce("TotalSizeInImageStorageTable", 0)        != 0
+           OR coalesce("NumberOfStoredImages", 0)          - coalesce("NumberOfImagesInImageStorageTable", 0)   != 0
+           OR coalesce("TotalSizeOfThumbnails", 0)         - coalesce("TotalSizeOfThumbnailsInImageStorageTable", 0) != 0
            OR coalesce("TotalSizeOfStoredAdjuncts", 0)     - coalesce("TotalAdjunctSizeInImageStorageTable", 0) != 0
-           OR coalesce("NumberOfStoredAdjuncts", 0)        - coalesce("NumberOfAdjunctsInAdjunctsTable", 0) != 0
+           OR coalesce("NumberOfStoredAdjuncts", 0)        - coalesce("NumberOfAdjunctsInAdjunctsTable", 0)     != 0
         ORDER BY y."Customer", cte."Customer", y."Space", cte."Space";
         """)
 
@@ -287,7 +289,7 @@ def __run_sql(conn):
             "TotalSizeOfThumbnails"     = totalThumbnailSize,
             "NumberOfStoredAdjuncts"    = numberOfAdjuncts,
             "TotalSizeOfStoredAdjuncts" = totalAdjunctSize,
-            "LastCalculated"            = now()
+            "LastCalculated"            = current_timestamp
         FROM (
             -- Sum every real space (non-null) per customer to produce the customer-wide totals.
             SELECT "Customer",
