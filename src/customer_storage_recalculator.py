@@ -253,6 +253,26 @@ def __run_sql(conn):
             FROM to_zero
             WHERE "CustomerStorage"."Customer" = to_zero."Customer"
               AND "CustomerStorage"."Space"    = to_zero."Space"
+        ),
+        -- Update LastCalculated for spaces that are already zero but have no ImageStorage records
+        -- (e.g. space 0 with no images/adjuncts). These are skipped by the upsert in step 1
+        -- (no ImageStorage rows) and by the zeroed CTE above (already-zero values pass no rows
+        -- through to_zero). This CTE is mutually exclusive with zeroed: to_zero requires at
+        -- least one non-zero value, whereas this targets rows where all values are already 0.
+        last_calc_update AS (
+            UPDATE "CustomerStorage"
+            SET "LastCalculated" = current_timestamp
+            WHERE "Space" IS NOT NULL
+              AND NOT EXISTS (
+                SELECT 1 FROM "ImageStorage"
+                WHERE "ImageStorage"."Customer" = "CustomerStorage"."Customer"
+                  AND "ImageStorage"."Space"    = "CustomerStorage"."Space"
+              )
+              AND "NumberOfStoredImages"      = 0
+              AND "TotalSizeOfStoredImages"   = 0
+              AND "TotalSizeOfThumbnails"     = 0
+              AND "NumberOfStoredAdjuncts"    = 0
+              AND "TotalSizeOfStoredAdjuncts" = 0
         )
         -- Return the old (pre-zero) values as deltas so they feed into CloudWatch metrics.
         SELECT "Customer",
