@@ -70,7 +70,7 @@ class TestFunction(unittest.TestCase):
     @mock.patch("psycopg2.connect")
     @mock.patch("customer_storage_recalculator.CONNECTION_STRING",
                 "postgresql://user:pass@host:1234/postgres")  # pragma: allowlist secret
-    def test_step2_sql_updates_last_calculated_for_already_zero_spaces(self, mock_connect):
+    def test_zeroed_row_updates_last_calculated_for_already_zero_spaces(self, mock_connect):
         # Spaces that already have all-zero values and no ImageStorage records (e.g. space 0
         # with no images/adjuncts) must still have LastCalculated touched. Verify the step 2
         # SQL contains the last_calc_update CTE that handles this case.
@@ -80,8 +80,9 @@ class TestFunction(unittest.TestCase):
 
         customer_storage_recalculator.run_cleanup()
 
-        step2_sql = mock_cur.execute.call_args_list[1][0][0]
-        self.assertIn("last_calc_update", step2_sql)
+        zeroed_row = mock_cur.execute.call_args_list[1][0][0]
+        self.assertIn("zeroed", zeroed_row)
+        self.assertNotIn("last_calc_update", zeroed_row)
 
     @mock.patch("customer_storage_recalculator.ENABLE_CLOUDWATCH_INTEGRATION", False)
     @mock.patch("psycopg2.connect")
