@@ -223,7 +223,7 @@ def __run_sql(conn):
     # The old values are captured via the to_zero CTE (which reads the pre-update snapshot) so
     # they can be reported as deltas alongside the changes from step 1.
     cur.execute("""
-        -- Identify non-null spaces that have non-zero totals but no remaining ImageStorage records.
+        -- Identify non-null spaces with no remaining ImageStorage records.
         WITH to_zero AS (
             SELECT "Customer", "Space",
                    "NumberOfStoredImages", "TotalSizeOfStoredImages", "TotalSizeOfThumbnails",
@@ -235,13 +235,11 @@ def __run_sql(conn):
                 WHERE "ImageStorage"."Customer" = "CustomerStorage"."Customer"
                   AND "ImageStorage"."Space" = "CustomerStorage"."Space"
               )
-              AND (   "NumberOfStoredImages"    != 0
-                   OR "TotalSizeOfStoredImages" != 0
-                   OR "TotalSizeOfThumbnails"   != 0
-                   OR "NumberOfStoredAdjuncts"  != 0
-                   OR "TotalSizeOfStoredAdjuncts" != 0)
         ),
-        -- Zero out the identified rows.
+        -- Zero out the identified rows and stamp LastCalculated.
+        -- Covers both non-zero rows (actual changes) and already-zero rows (e.g. space 0 with
+        -- no images/adjuncts) that are skipped by the step 1 upsert but still need LastCalculated
+        -- updated. The final SELECT filters to only rows with non-zero deltas for reporting.
         zeroed AS (
             UPDATE "CustomerStorage"
             SET "NumberOfStoredImages"      = 0,
@@ -255,6 +253,7 @@ def __run_sql(conn):
               AND "CustomerStorage"."Space"    = to_zero."Space"
         )
         -- Return the old (pre-zero) values as deltas so they feed into CloudWatch metrics.
+        -- Rows already at zero are excluded — their delta is 0 so nothing meaningful to report.
         SELECT "Customer",
                "Space",
                "TotalSizeOfStoredImages",
@@ -272,7 +271,12 @@ def __run_sql(conn):
                "NumberOfStoredAdjuncts",
                0 AS "NumberOfAdjunctsInAdjunctsTable",
                "NumberOfStoredAdjuncts"    AS "NumberOfAdjunctsDelta"
-        FROM to_zero;
+        FROM to_zero
+        WHERE "NumberOfStoredImages"    != 0
+           OR "TotalSizeOfStoredImages" != 0
+           OR "TotalSizeOfThumbnails"   != 0
+           OR "NumberOfStoredAdjuncts"  != 0
+           OR "TotalSizeOfStoredAdjuncts" != 0;
         """)
 
     zeroed_space_changes = cur.fetchall()
