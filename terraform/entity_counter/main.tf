@@ -13,5 +13,6 @@ module "entity_counter" {
   prefix                   = var.prefix
   schedule                 = var.schedule
   cluster_arn              = var.cluster_arn
+  cloudwatch_alarm_sns_arn = var.cloudwatch_alarm_sns_arn
 }
 

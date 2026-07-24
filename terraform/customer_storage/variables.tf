@@ -48,3 +48,9 @@ variable "cluster_arn" {
   type        = string
   description = "ARN of ECS cluster for task"
 }
+
+variable "cloudwatch_alarm_sns_arn" {
+  type        = string
+  description = "ARN of an SNS topic to notify on alarm. If not set, no cloudwatch alarm is created"
+  default     = null
+}

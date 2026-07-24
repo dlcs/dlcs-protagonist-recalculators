@@ -4,6 +4,11 @@ locals {
   }
 
   full_name = "${var.prefix}-${var.recalc_type}"
+  # kebab-case -> PascalCase (e.g. "some-recalc" -> "SomeRecalc") for CloudWatch metric names, which can't contain hyphens
+  # 1. replace(var.recalc_type, "-", " ") — swap hyphens for spaces, since title() only recognizes spaces as word boundaries, not hyphens. "some-recalc" → "some recalc"
+  # 2. title(...) — uppercase the first letter of each space-separated word. "some recalc" → "Some Recalc"
+  # 3. replace(..., " ", "") — strip the spaces back out. "Some Recalc" → "SomeRecalc"
+  recalc_type_pascal = replace(title(replace(var.recalc_type, "-", " ")), " ", "")
 }
 
 module "recalc_container_definition" {
