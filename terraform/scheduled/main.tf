@@ -4,6 +4,11 @@ locals {
   }
 
   full_name = "${var.prefix}-${var.recalc_type}"
+  # kebab-case -> PascalCase (e.g. "some-recalc" -> "SomeRecalc") for CloudWatch metric names, which can't contain hyphens
+  # 1. replace(var.recalc_type, "-", " ") — swap hyphens for spaces, since title() only recognizes spaces as word boundaries, not hyphens. "some-recalc" → "some recalc"
+  # 2. title(...) — uppercase the first letter of each space-separated word. "some recalc" → "Some Recalc"
+  # 3. replace(..., " ", "") — strip the spaces back out. "Some Recalc" → "SomeRecalc"
+  recalc_type_pascal = replace(title(replace(var.recalc_type, "-", " ")), " ", "")
 }
 
 module "recalc_container_definition" {
@@ -144,5 +149,71 @@ resource "aws_cloudwatch_event_target" "event_target" {
   ecs_target {
     launch_type         = "EC2"
     task_definition_arn = module.recalc_task.arn
+  }
+}
+
+resource "aws_cloudwatch_event_rule" "recalculator_task_failed" {
+  name = "${local.full_name}-task-failed"
+
+  event_pattern = jsonencode({
+    source      = ["aws.ecs"]
+    detail-type = ["ECS Task State Change"]
+    detail = {
+      clusterArn = [var.cluster_arn]
+      lastStatus = ["STOPPED"]
+      taskDefinitionArn = [
+        { prefix = "arn:aws:ecs:${var.region}:${var.account_id}:task-definition/${local.full_name}:" }
+      ]
+      "$or" = [
+        { containers = { exitCode = [{ "anything-but" = 0 }] } },
+        { stopCode = ["TaskFailedToStart"] }
+      ]
+    }
+  })
+}
+
+resource "aws_cloudwatch_log_group" "recalculator_task_failures" {
+  name              = "/aws/events/${local.full_name}-task-failures"
+  retention_in_days = 14
+}
+
+data "aws_iam_policy_document" "recalc_task_failure_events_log_policy" {
+  statement {
+    effect  = "Allow"
+    actions = ["logs:CreateLogStream", "logs:PutLogEvents"]
+
+    resources = [
+      "${aws_cloudwatch_log_group.recalculator_task_failures.arn}:*",
+    ]
+
+    principals {
+      type        = "Service"
+      identifiers = ["events.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_cloudwatch_log_resource_policy" "recalculator_task_failure_events" {
+  policy_name     = "${var.prefix}-recalculator-task-failure-events"
+  policy_document = data.aws_iam_policy_document.recalc_task_failure_events_log_policy.json
+}
+
+resource "aws_cloudwatch_event_target" "recalculator_task_failed" {
+  rule = aws_cloudwatch_event_rule.recalculator_task_failed.name
+  arn  = aws_cloudwatch_log_group.recalculator_task_failures.arn
+
+  depends_on = [aws_cloudwatch_log_resource_policy.recalculator_task_failure_events]
+}
+
+resource "aws_cloudwatch_log_metric_filter" "recalculator_task_failed" {
+  name           = "${local.full_name}-task-failed"
+  log_group_name = aws_cloudwatch_log_group.recalculator_task_failures.name
+  pattern        = ""
+
+  metric_transformation {
+    name          = "${local.recalc_type_pascal}RecalculatorTaskFailures"
+    namespace     = "${var.prefix}/Recalculators"
+    value         = "1"
+    default_value = "0"
   }
 }
