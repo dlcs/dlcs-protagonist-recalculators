@@ -40,7 +40,7 @@ data "aws_iam_policy_document" "recalc_task_failure_events_log_policy" {
 }
 
 resource "aws_cloudwatch_log_resource_policy" "recalculator_task_failure_events" {
-  policy_name     = "${var.prefix}-recalculator-task-failure-events"
+  policy_name     = "${local.full_name}-recalculator-task-failure-events"
   policy_document = data.aws_iam_policy_document.recalc_task_failure_events_log_policy.json
 }
 
