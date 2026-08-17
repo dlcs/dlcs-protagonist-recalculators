@@ -131,15 +131,17 @@ def __run_sql(conn):
             FROM "ImageStorage"
             GROUP BY "Customer", "Space"
         ),
-        -- Count hosted adjuncts per customer/space.
+        -- Count hosted-and-stored adjuncts per customer/space.
         -- AssetId is stored as '{customer}/{space}/{id}', so split_part extracts the components.
-        -- Only adjuncts with a non-empty Origin are hosted (i.e. stored by DLCS).
+        -- An adjunct is hosted (i.e. has an Origin) but only actually occupies storage when it
+        -- isn't "Optimised" - optimised adjuncts are hosted without their bytes being stored, so
+        -- they must be excluded here even though ImageStorage still records a measured size for them.
         adj_cte AS (
             SELECT CAST(split_part("AssetId", '/', 1) AS integer) AS "Customer",
                    CAST(split_part("AssetId", '/', 2) AS integer) AS "Space",
                    COUNT(*) AS "NumberOfAdjunctsInAdjunctsTable"
             FROM "Adjuncts"
-            WHERE "Origin" IS NOT NULL AND "Origin" != ''
+            WHERE COALESCE("Origin", '') != '' AND "Optimised" = false
             GROUP BY 1, 2
         ),
         -- Combine image and adjunct aggregates. LEFT JOIN so spaces with no hosted adjuncts
